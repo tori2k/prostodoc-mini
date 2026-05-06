@@ -1,0 +1,55 @@
+import { useEffect } from 'react'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+
+import { WelcomePage, SEEN_KEY } from '@/pages/WelcomePage'
+import { HomePage } from '@/pages/HomePage'
+import { HistoryPage } from '@/pages/HistoryPage'
+import { ProfilePage } from '@/pages/ProfilePage'
+import { ReviewPage } from '@/pages/ReviewPage'
+import { PlaceholderPage } from '@/pages/PlaceholderPage'
+import { ready, expandViewport } from '@/lib/telegram'
+
+function Root() {
+  // Если юзер уже видел welcome — сразу домой
+  const seen = localStorage.getItem(SEEN_KEY) === '1'
+  return <Navigate to={seen ? '/home' : '/welcome'} replace />
+}
+
+export default function App() {
+  useEffect(() => {
+    // Telegram-WebApp хочет два пинга при старте: ready() убирает лоадер,
+    // expand() занимает весь экран чата (без свайпа закрытия).
+    ready()
+    expandViewport()
+  }, [])
+
+  return (
+    // HashRouter — потому что GH Pages не умеет server-side rewrites.
+    // /prostodoc-mini/#/home работает везде без 404.
+    <HashRouter>
+      <Routes>
+        <Route path="/" element={<Root />} />
+        <Route path="/welcome"  element={<WelcomePage />} />
+        <Route path="/home"     element={<HomePage />} />
+        <Route path="/history"  element={<HistoryPage />} />
+        <Route path="/profile"  element={<ProfilePage />} />
+        <Route path="/review"   element={<ReviewPage />} />
+        <Route path="/generate" element={
+          <PlaceholderPage
+            title="Создать договор"
+            message="Опишите своими словами что нужно — Claude соберёт DOCX и PDF."
+            botCommand="/generate"
+          />
+        } />
+        <Route path="/explain" element={
+          <PlaceholderPage
+            title="Объяснить пункт"
+            message="Скопируйте один пункт договора — объясню что он значит."
+            botCommand="/explain"
+          />
+        } />
+        <Route path="*" element={<Navigate to="/home" replace />} />
+      </Routes>
+    </HashRouter>
+  )
+}
