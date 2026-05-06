@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Upload, Loader2, AlertCircle } from 'lucide-react'
+import {
+  ArrowLeft, Upload, Loader2, AlertCircle, FileText,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { api, ApiError } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
+import { ReviewResult } from '@/components/ReviewResult'
 
 const PERSPECTIVES = [
-  { value: 'Исполнитель',  label: 'Я Исполнитель / Подрядчик' },
-  { value: 'Заказчик',     label: 'Я Заказчик / Покупатель' },
-  { value: 'Арендатор',    label: 'Я Арендатор' },
-  { value: 'Арендодатель', label: 'Я Арендодатель' },
+  { value: 'Исполнитель',  label: 'Исполнитель',  hint: 'Я выполняю работу' },
+  { value: 'Заказчик',     label: 'Заказчик',     hint: 'Я плачу за работу' },
+  { value: 'Арендатор',    label: 'Арендатор',    hint: 'Я снимаю' },
+  { value: 'Арендодатель', label: 'Арендодатель', hint: 'Я сдаю' },
 ] as const
 
 export function ReviewPage() {
@@ -28,10 +30,11 @@ export function ReviewPage() {
     try {
       const r = await api.reviewUpload(file, perspective)
       setResult(r.review_html)
+      haptic('heavy')
     } catch (e: unknown) {
       if (e instanceof ApiError) {
         if (e.status === 429) {
-          showAlert('Лимит проверок исчерпан. Загляните в /subscribe.')
+          showAlert('Лимит проверок исчерпан. Загляните в Тарифы.')
         } else if (e.status === 400) {
           showAlert('Не получилось прочитать файл — возможно, скан без текстового слоя.')
         } else {
@@ -47,33 +50,23 @@ export function ReviewPage() {
 
   if (result) {
     return (
-      <div className="min-h-dvh px-5 pt-6 pb-8">
-        <header className="flex items-center gap-3 mb-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/home')}
-            aria-label="Назад"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-xl font-bold">Результат проверки</h1>
-        </header>
-        <Card>
-          <CardContent className="pt-6">
-            <div
-              className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: result }}
-            />
-          </CardContent>
-        </Card>
-      </div>
+      <ReviewResult
+        text={result}
+        fileName={file?.name ?? 'Договор'}
+        onBack={() => {
+          setResult(null)
+          setFile(null)
+          setPerspective('')
+        }}
+        onHome={() => navigate('/home')}
+      />
     )
   }
 
   return (
-    <div className="min-h-dvh px-5 pt-6 pb-8">
-      <header className="flex items-center gap-3 mb-6">
+    <div className="min-h-dvh bg-muted/40">
+      {/* Header */}
+      <header className="bg-card border-b border-border px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
         <Button
           variant="ghost"
           size="icon"
@@ -82,102 +75,178 @@ export function ReviewPage() {
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-xl font-bold">Проверить договор</h1>
+        <div>
+          <h1 className="text-base font-bold leading-none">Проверить договор</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            AI найдёт риски за 30 секунд
+          </p>
+        </div>
       </header>
 
-      {/* Загрузка файла */}
-      <label className="block mb-4">
-        <span className="text-sm font-medium block mb-2">Договор</span>
-        <div className={`
-          border-2 border-dashed rounded-lg p-6 text-center transition-colors
-          ${file ? 'border-accent bg-accent/5' : 'border-border bg-muted/30'}
-        `}>
-          {file ? (
+      <div className="px-5 pt-5 pb-8">
+        {/* Шаг 1 — файл */}
+        <Step n={1} title="Загрузите договор">
+          <FileDropZone
+            file={file}
+            onSelect={(f) => {
+              setFile(f)
+              haptic('light')
+            }}
+          />
+        </Step>
+
+        {/* Шаг 2 — роль */}
+        <Step n={2} title="Чьи интересы защищать?">
+          <div className="grid grid-cols-2 gap-2">
+            {PERSPECTIVES.map((p) => {
+              const isActive = perspective === p.value
+              return (
+                <button
+                  key={p.value}
+                  onClick={() => {
+                    setPerspective(p.value)
+                    haptic('light')
+                  }}
+                  className={`
+                    rounded-xl border p-3 text-left transition-all
+                    ${isActive
+                      ? 'bg-[#1E3A8A] text-white border-[#1E3A8A] shadow-md shadow-[#1E3A8A]/30'
+                      : 'bg-card border-border'}
+                  `}
+                >
+                  <p className="text-sm font-semibold">{p.label}</p>
+                  <p className={`text-[11px] mt-0.5 ${isActive ? 'text-white/70' : 'text-muted-foreground'}`}>
+                    {p.hint}
+                  </p>
+                </button>
+              )
+            })}
+          </div>
+        </Step>
+
+        {/* CTA */}
+        <button
+          onClick={handleSubmit}
+          disabled={!file || !perspective || loading}
+          className="
+            w-full h-14 rounded-2xl bg-[#F97316] text-white font-bold
+            shadow-lg shadow-orange-500/30
+            transition-all active:scale-[0.98]
+            disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed
+            flex items-center justify-center gap-2
+          "
+        >
+          {loading ? (
             <>
-              <p className="text-sm font-medium truncate">{file.name}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {(file.size / 1024 / 1024).toFixed(1)} МБ
-              </p>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Анализирую…
             </>
           ) : (
             <>
-              <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm font-medium">Выберите файл</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                PDF, DOCX, TXT — до 20 МБ
-              </p>
+              ⚡ Найти риски
             </>
           )}
-          <input
-            type="file"
-            accept=".pdf,.docx,.txt"
-            className="hidden"
-            id="contract-file"
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (f) {
-                setFile(f)
-                haptic('light')
-              }
-            }}
-          />
-          <Button
-            variant="outline"
-            className="mt-3"
-            onClick={() => document.getElementById('contract-file')?.click()}
-            type="button"
-          >
-            {file ? 'Заменить' : 'Выбрать файл'}
-          </Button>
-        </div>
-      </label>
+        </button>
 
-      {/* Роль */}
-      <div className="mb-6">
-        <p className="text-sm font-medium mb-2">Чьи интересы защищать?</p>
-        <div className="grid grid-cols-2 gap-2">
-          {PERSPECTIVES.map((p) => (
-            <button
-              key={p.value}
-              onClick={() => {
-                setPerspective(p.value)
-                haptic('light')
-              }}
-              className={`
-                rounded-lg border p-3 text-sm text-left transition-colors
-                ${perspective === p.value
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-card border-border hover:bg-muted'}
-              `}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
+        <p className="text-[11px] text-muted-foreground text-center mt-3 flex items-center justify-center gap-1.5">
+          <AlertCircle className="w-3 h-3" />
+          Анализ занимает 30–60 секунд
+        </p>
       </div>
-
-      {/* CTA */}
-      <Button
-        onClick={handleSubmit}
-        disabled={!file || !perspective || loading}
-        variant="accent"
-        size="lg"
-        className="w-full"
-      >
-        {loading ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Анализирую…
-          </>
-        ) : (
-          'Проверить договор'
-        )}
-      </Button>
-
-      <p className="text-[11px] text-muted-foreground text-center mt-3 flex items-center justify-center gap-1">
-        <AlertCircle className="w-3 h-3" />
-        Анализ занимает 30–60 секунд
-      </p>
     </div>
+  )
+}
+
+// ─── Под-компоненты ────────────────────────────────────────────────────
+
+function Step({
+  n, title, children,
+}: {
+  n: number
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="mb-6">
+      <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+        <span className="w-6 h-6 rounded-full bg-[#1E3A8A] text-white text-xs flex items-center justify-center font-bold">
+          {n}
+        </span>
+        {title}
+      </h2>
+      {children}
+    </section>
+  )
+}
+
+function FileDropZone({
+  file, onSelect,
+}: {
+  file: File | null
+  onSelect: (f: File) => void
+}) {
+  if (file) {
+    return (
+      <div className="rounded-2xl border-2 border-[#F97316] bg-orange-50 p-5">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-lg bg-[#F97316] flex items-center justify-center text-white">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm truncate">{file.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {(file.size / 1024 / 1024).toFixed(2)} МБ
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => document.getElementById('contract-file')?.click()}
+          type="button"
+        >
+          Заменить файл
+        </Button>
+        <input
+          type="file"
+          accept=".pdf,.docx,.txt"
+          className="hidden"
+          id="contract-file"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) onSelect(f)
+          }}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={() => document.getElementById('contract-file')?.click()}
+      type="button"
+      className="
+        w-full rounded-2xl border-2 border-dashed border-border
+        bg-card hover:bg-muted/50 transition-colors
+        p-8 text-center
+      "
+    >
+      <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+      <p className="font-semibold mb-1">Выберите файл</p>
+      <p className="text-xs text-muted-foreground">
+        PDF · DOCX · TXT — до 20 МБ
+      </p>
+      <input
+        type="file"
+        accept=".pdf,.docx,.txt"
+        className="hidden"
+        id="contract-file"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) onSelect(f)
+        }}
+      />
+    </button>
   )
 }

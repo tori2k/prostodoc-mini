@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, FileText, BookOpen, Clock, User, Loader2 } from 'lucide-react'
+import {
+  Search, FileText, BookOpen, Clock, User, Loader2,
+  Sparkles, ArrowRight,
+} from 'lucide-react'
 
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { api, type MeResponse, ApiError } from '@/lib/api'
 import { haptic, getCurrentUser } from '@/lib/telegram'
+
+const BASE_URL = import.meta.env.BASE_URL
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -18,7 +22,6 @@ export function HomePage() {
       .then((data) => setMe(data))
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.status === 401) {
-          // Открыто не из Telegram — показываем dev-плейсхолдер
           setError('Откройте мини-приложение из бота @ProstoDocxBot')
         } else {
           setError('Не удалось загрузить данные. Попробуйте позже.')
@@ -39,70 +42,94 @@ export function HomePage() {
   }
 
   return (
-    <div className="min-h-dvh px-5 pt-6 pb-24">
-      {/* Шапка */}
-      <header className="mb-6">
-        <p className="text-sm text-muted-foreground">Привет,</p>
-        <h1 className="text-2xl font-bold tracking-tight">{firstName} 👋</h1>
-      </header>
-
-      {error && (
-        <Card className="p-4 mb-6 border-danger/30 bg-danger/5">
-          <p className="text-sm">{error}</p>
-        </Card>
-      )}
-
-      {/* Лимиты */}
-      {me && (
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <QuotaCard
-            label="Проверок"
-            remaining={me.remaining.review}
-            limit={me.limits.review}
-            tone="primary"
-          />
-          <QuotaCard
-            label="Договоров"
-            remaining={me.remaining.generate}
-            limit={me.limits.generate}
-            tone="accent"
-          />
+    <div className="min-h-dvh bg-muted/40 pb-24">
+      {/* ─── HERO ─────────────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#1E3A8A] via-[#1E3A8A] to-[#3B5FAE] text-white px-5 pt-10 pb-12 rounded-b-[2rem]">
+        {/* Декоративные орбиты на фоне */}
+        <div className="pointer-events-none absolute inset-0 opacity-25">
+          <div className="absolute -top-32 -right-32 w-72 h-72 rounded-full bg-orange-500/30 blur-3xl" />
+          <div className="absolute -bottom-24 -left-20 w-64 h-64 rounded-full bg-indigo-400/30 blur-3xl" />
         </div>
-      )}
 
-      {/* Главные действия */}
-      <div className="space-y-3 mb-8">
-        <ActionCard
-          icon={<Search className="w-5 h-5" />}
+        <div className="relative">
+          <div className="flex items-start gap-4 mb-6">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-white/70 mb-1">
+                <Sparkles className="inline w-3.5 h-3.5 mr-1 -translate-y-0.5" />
+                AI-юрист
+              </p>
+              <h1 className="text-3xl font-bold leading-tight">
+                Привет,<br/>{firstName} 👋
+              </h1>
+            </div>
+            <img
+              src={`${BASE_URL}mascot/raccoon-friendly.png`}
+              alt="Енот ProstoDoc"
+              className="w-24 h-24 -mt-2 object-contain drop-shadow-xl"
+            />
+          </div>
+
+          {error && (
+            <div className="bg-red-500/15 backdrop-blur-sm border border-red-300/30 rounded-lg px-3 py-2 mb-4">
+              <p className="text-sm text-red-100">{error}</p>
+            </div>
+          )}
+
+          {/* Лимиты в виде капсул */}
+          {me && (
+            <div className="flex gap-2">
+              <QuotaBadge
+                label="Проверок"
+                remaining={me.remaining.review}
+                limit={me.limits.review}
+              />
+              <QuotaBadge
+                label="Договоров"
+                remaining={me.remaining.generate}
+                limit={me.limits.generate}
+              />
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ─── ОСНОВНЫЕ ДЕЙСТВИЯ ──────────────────────────────────────── */}
+      <section className="px-5 -mt-6 relative z-10 space-y-3 mb-6">
+        <PrimaryCTA
+          icon={<Search className="w-6 h-6" />}
           title="Проверить договор"
-          desc="PDF · Word · до 10 МБ. Найду риски за 30 секунд."
+          desc="PDF · Word · до 10 МБ"
+          highlight="Найду риски за 30 секунд"
           onClick={() => {
             haptic('medium')
             navigate('/review')
           }}
-          accent
         />
-        <ActionCard
+      </section>
+
+      <section className="px-5 space-y-3 mb-8">
+        <SecondaryCard
           icon={<FileText className="w-5 h-5" />}
           title="Создать договор"
-          desc="Опишите ситуацию своими словами. Получите готовый Word и PDF."
+          desc="5 шаблонов или своими словами"
           onClick={() => {
             haptic('medium')
             navigate('/generate')
           }}
+          accent="orange"
         />
-        <ActionCard
+        <SecondaryCard
           icon={<BookOpen className="w-5 h-5" />}
           title="Объяснить пункт"
-          desc="Скопируйте один пункт — объясню что он значит. Бесплатно."
+          desc="Бесплатно. Просто скопируйте текст."
           onClick={() => {
             haptic('light')
             navigate('/explain')
           }}
+          accent="green"
         />
-      </div>
+      </section>
 
-      {/* Низ — навигация */}
       <BottomNav active="home" />
     </div>
   )
@@ -110,61 +137,92 @@ export function HomePage() {
 
 // ─── Под-компоненты ────────────────────────────────────────────────────
 
-function QuotaCard({
-  label, remaining, limit, tone,
+function QuotaBadge({
+  label, remaining, limit,
 }: {
   label: string
   remaining: number
   limit: number
-  tone: 'primary' | 'accent'
 }) {
-  const ringColor = tone === 'primary' ? 'text-primary' : 'text-accent'
-  const isLow = remaining === 0
+  const ratio = limit > 0 ? remaining / limit : 0
+  const tone = ratio === 0 ? 'bg-red-500/20 border-red-300/40' : 'bg-white/10 border-white/20'
   return (
-    <Card className="p-4">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-        {label}
+    <div className={`flex-1 rounded-2xl ${tone} backdrop-blur-sm border px-4 py-3`}>
+      <p className="text-[11px] uppercase tracking-wider text-white/70 mb-0.5">{label}</p>
+      <p className="text-xl font-bold tabular-nums">
+        {remaining}<span className="text-white/50 text-base font-normal"> / {limit}</span>
       </p>
-      <div className="flex items-baseline gap-1">
-        <span className={`text-3xl font-bold ${ringColor}`}>{remaining}</span>
-        <span className="text-sm text-muted-foreground">/ {limit}</span>
-      </div>
-      {isLow && (
-        <Badge variant="outline" className="mt-2 text-[10px]">
-          Лимит на сегодня исчерпан
-        </Badge>
-      )}
-    </Card>
+    </div>
   )
 }
 
-function ActionCard({
-  icon, title, desc, onClick, accent = false,
+function PrimaryCTA({
+  icon, title, desc, highlight, onClick,
+}: {
+  icon: React.ReactNode
+  title: string
+  desc: string
+  highlight: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="
+        w-full text-left rounded-2xl bg-[#F97316] text-white
+        p-5 shadow-lg shadow-orange-500/30
+        transition-transform active:scale-[0.98]
+        relative overflow-hidden
+      "
+    >
+      <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full bg-white/10 blur-2xl" />
+      <div className="relative">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            {icon}
+          </div>
+          <h3 className="text-xl font-bold">{title}</h3>
+          <ArrowRight className="ml-auto w-5 h-5 opacity-70" />
+        </div>
+        <p className="text-sm text-white/80 mb-1">{desc}</p>
+        <p className="text-xs font-semibold text-white/90 inline-flex items-center">
+          ⚡ {highlight}
+        </p>
+      </div>
+    </button>
+  )
+}
+
+function SecondaryCard({
+  icon, title, desc, onClick, accent,
 }: {
   icon: React.ReactNode
   title: string
   desc: string
   onClick: () => void
-  accent?: boolean
+  accent: 'orange' | 'green' | 'blue'
 }) {
+  const accents = {
+    orange: 'text-orange-600 bg-orange-50',
+    green:  'text-emerald-600 bg-emerald-50',
+    blue:   'text-blue-600 bg-blue-50',
+  }
   return (
-    <button
+    <Card
       onClick={onClick}
-      className={`
-        w-full text-left rounded-lg border p-4 transition-colors
-        ${accent
-          ? 'bg-accent text-accent-foreground border-accent shadow-md hover:bg-accent/90'
-          : 'bg-card text-card-foreground border-border hover:bg-muted'}
-      `}
+      className="cursor-pointer p-4 hover:bg-muted/50 transition-colors active:scale-[0.99]"
     >
-      <div className="flex items-center gap-3 mb-1">
-        <div className={accent ? 'text-white' : 'text-primary'}>{icon}</div>
-        <span className="text-base font-semibold">{title}</span>
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${accents[accent]}`}>
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-foreground">{title}</h3>
+          <p className="text-xs text-muted-foreground">{desc}</p>
+        </div>
+        <ArrowRight className="w-4 h-4 text-muted-foreground" />
       </div>
-      <p className={`text-sm ${accent ? 'text-white/85' : 'text-muted-foreground'}`}>
-        {desc}
-      </p>
-    </button>
+    </Card>
   )
 }
 
@@ -177,8 +235,8 @@ export function BottomNav({ active }: { active: 'home' | 'history' | 'profile' }
   ] as const
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border">
-      <div className="flex items-center justify-around max-w-md mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-20">
+      <div className="flex items-center justify-around max-w-md mx-auto pb-[env(safe-area-inset-bottom)]">
         {items.map((item) => {
           const isActive = active === item.id
           return (
@@ -190,7 +248,7 @@ export function BottomNav({ active }: { active: 'home' | 'history' | 'profile' }
               }}
               className={`
                 flex flex-col items-center gap-1 py-3 px-6 transition-colors
-                ${isActive ? 'text-primary' : 'text-muted-foreground'}
+                ${isActive ? 'text-[#F97316]' : 'text-muted-foreground'}
               `}
             >
               {item.icon}
