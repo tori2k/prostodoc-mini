@@ -1,20 +1,18 @@
 @import "tailwindcss";
 
 /* ─── ProstoDoc design tokens ────────────────────────────────────────── */
+/* Tailwind v4 читает @theme и генерирует утилиты bg-primary, text-foreground и т.п. */
 
 @theme {
-  /* Brand */
-  --color-primary: #1E3A8A;        /* глубокий синий — заголовки/бренд */
+  --color-primary: #1E3A8A;
   --color-primary-foreground: #ffffff;
-  --color-accent: #F97316;         /* тёплый оранжевый — CTA */
+  --color-accent: #F97316;
   --color-accent-foreground: #ffffff;
 
-  /* Status */
   --color-danger:  #DC2626;
   --color-warning: #EAB308;
   --color-success: #16A34A;
 
-  /* Neutral (light mode default) */
   --color-background: #ffffff;
   --color-foreground: #1F2937;
   --color-muted: #F3F4F6;
@@ -24,33 +22,24 @@
   --color-border: #e5e4e7;
   --color-ring: #1E3A8A;
 
-  /* Radius */
   --radius: 0.5rem;
 }
 
-/* Telegram WebView темы — берём системную цветовую схему через переменные TG */
-:root {
-  /* TG переопределит эти переменные если они доступны */
-  --tg-theme-bg-color: var(--color-background);
-  --tg-theme-text-color: var(--color-foreground);
-  --tg-theme-hint-color: var(--color-muted-foreground);
-  --tg-theme-link-color: var(--color-primary);
-  --tg-theme-button-color: var(--color-accent);
-  --tg-theme-button-text-color: var(--color-accent-foreground);
-  --tg-theme-secondary-bg-color: var(--color-muted);
-}
+/* ─── Тёмная тема ──────────────────────────────────────────────────────
+ * Tailwind v4 не позволяет переопределять @theme внутри @media,
+ * поэтому переопределяем уже сгенерированные --color-* переменные
+ * на :root.dark. Класс dark вешается из main.tsx по prefers-color-scheme
+ * или Telegram-API.
+ */
 
-/* Тёмная тема — Telegram передаёт её через color-scheme в WebView */
-@media (prefers-color-scheme: dark) {
-  @theme {
-    --color-background: #0a0a0a;
-    --color-foreground: #f3f4f6;
-    --color-muted: #1f2028;
-    --color-muted-foreground: #9ca3af;
-    --color-card: #16171d;
-    --color-card-foreground: #f3f4f6;
-    --color-border: #2e303a;
-  }
+.dark {
+  --color-background: #0a0a0a;
+  --color-foreground: #f3f4f6;
+  --color-muted: #1f2028;
+  --color-muted-foreground: #9ca3af;
+  --color-card: #16171d;
+  --color-card-foreground: #f3f4f6;
+  --color-border: #2e303a;
 }
 
 /* Сбросы */
@@ -61,8 +50,8 @@
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  background: var(--tg-theme-bg-color);
-  color: var(--tg-theme-text-color);
+  background: var(--color-background);
+  color: var(--color-foreground);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
