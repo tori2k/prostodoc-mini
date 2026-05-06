@@ -50,7 +50,8 @@ export interface MeResponse {
   plan: 'free' | 'basic' | 'pro' | 'lawyer'
   is_paid: boolean
   limits: { review: number; generate: number; explain?: number }
-  remaining: { review: number; generate: number; explain: number }
+  // explain сейчас не лимитируется — может прийти null
+  remaining: { review: number; generate: number; explain: number | null }
 }
 
 export interface HistoryItem {

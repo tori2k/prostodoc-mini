@@ -102,7 +102,7 @@ export function ProfilePage() {
                 <div className="space-y-2.5">
                   <Row label="Проверок"   remaining={me.remaining.review}   limit={me.limits.review} />
                   <Row label="Договоров"  remaining={me.remaining.generate} limit={me.limits.generate} />
-                  {me.limits.explain !== undefined && (
+                  {me.limits.explain !== undefined && me.remaining.explain !== null && (
                     <Row label="Объяснений" remaining={me.remaining.explain} limit={me.limits.explain} />
                   )}
                 </div>
