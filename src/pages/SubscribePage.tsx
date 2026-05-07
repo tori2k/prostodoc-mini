@@ -12,7 +12,7 @@ import { track, EVT } from '@/lib/analytics'
 
 const BASE_URL = import.meta.env.BASE_URL
 
-type PaidPlan = 'basic' | 'pro' | 'lawyer'
+type PaidPlan = 'starter' | 'basic' | 'pro'
 
 interface Plan {
   id: 'free' | PaidPlan
@@ -26,6 +26,8 @@ interface Plan {
   badge?: string
 }
 
+// 4 тарифа в воронке. Lawyer убран — вернём когда будут юристы-клиенты.
+// Stars-цены: ~1.45 ₽ за Star (Telegram конвертирует автоматически).
 const PLANS: Plan[] = [
   {
     id: 'free',
@@ -34,56 +36,55 @@ const PLANS: Plan[] = [
     priceLabel: '0 ₽',
     desc: 'Чтобы попробовать',
     perks: [
-      '1 проверка в месяц',
-      '1 договор в месяц',
-      'Объяснения пунктов без лимита',
+      '1 проверка договора в месяц',
+      '1 готовый договор в месяц',
+      'Объяснения пунктов — без лимита',
+    ],
+  },
+  {
+    id: 'starter',
+    name: 'Старт',
+    price: 249,
+    priceLabel: '249 ₽',
+    stars: 175,
+    desc: 'Для разовых проверок',
+    perks: [
+      '5 проверок договоров в месяц',
+      '3 готовых договора в месяц',
+      'Письма контрагенту и PDF-отчёты',
+      'Объяснения пунктов — без лимита',
     ],
   },
   {
     id: 'basic',
     name: 'Базовый',
-    price: 390,
-    priceLabel: '390 ₽',
-    stars: 250,
+    price: 590,
+    priceLabel: '590 ₽',
+    stars: 410,
     desc: 'Для самозанятых и фрилансеров',
     perks: [
-      '10 проверок в месяц',
-      '10 договоров в месяц',
+      '20 проверок договоров в месяц',
+      '10 готовых договоров в месяц',
       'История на 6 месяцев',
-      'Письма контрагенту',
+      'Письма контрагенту и PDF-отчёты',
     ],
   },
   {
     id: 'pro',
     name: 'Pro',
-    price: 990,
-    priceLabel: '990 ₽',
-    stars: 600,
+    price: 1290,
+    priceLabel: '1290 ₽',
+    stars: 900,
     desc: 'Для малого бизнеса и ИП',
     perks: [
-      '80 проверок в месяц',
-      '40 договоров в месяц',
+      '80 проверок договоров в месяц',
+      '40 готовых договоров в месяц',
       'История на год',
-      'Эталоны для AI (до 5 шт.)',
+      'Эталоны для AI (до 5 шт.) — пишет в вашем стиле',
       'Приоритетная поддержка',
     ],
     highlight: true,
     badge: 'Популярный',
-  },
-  {
-    id: 'lawyer',
-    name: 'Юрист',
-    price: 3900,
-    priceLabel: '3900 ₽',
-    stars: 2500,
-    desc: 'Для практикующих юристов',
-    perks: [
-      '400 проверок в месяц',
-      '150 договоров в месяц',
-      'История без ограничений',
-      'Эталоны без ограничений',
-      'Прямой доступ к разработчику',
-    ],
   },
 ]
 
@@ -205,9 +206,9 @@ export function SubscribePage() {
         ))}
 
         <p className="text-center text-xs text-white/40 pt-4 px-4 leading-relaxed">
-          Оплата через Telegram Stars (⭐). Подписка возобновляется
-          автоматически каждый месяц. Отменить можно в настройках Telegram
-          → Платежи и подписки.
+          Оплата через Telegram Stars — Telegram сам конвертирует в рубли по
+          курсу СБП/карты. Подписка возобновляется каждый месяц.
+          Отменить — в настройках Telegram → Платежи и подписки.
         </p>
       </motion.section>
     </DarkScreen>
@@ -258,10 +259,20 @@ function PlanCard({
         </div>
         <p className="text-xs text-white/55 mb-3">{plan.desc}</p>
 
-        <div className="flex items-baseline gap-1 mb-4">
-          <span className="text-3xl font-extrabold text-white">{plan.priceLabel}</span>
-          {plan.price > 0 && (
-            <span className="text-sm text-white/45">/ месяц</span>
+        <div className="mb-4">
+          <div className="flex items-baseline gap-1">
+            <span className="text-3xl font-extrabold text-white">{plan.priceLabel}</span>
+            {plan.price > 0 && (
+              <span className="text-sm text-white/45">/ месяц</span>
+            )}
+          </div>
+          {plan.stars && (
+            <p className="text-[11px] text-white/40 mt-0.5 inline-flex items-center gap-1">
+              или
+              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+              <span className="tabular-nums">{plan.stars}</span>
+              · оплата звёздами Telegram
+            </p>
           )}
         </div>
 
@@ -279,8 +290,8 @@ function PlanCard({
             onClick={onPick}
             disabled={buying}
             className={`
-              w-full h-11 rounded-xl font-semibold transition-all active:scale-[0.98]
-              inline-flex items-center justify-center gap-1.5
+              w-full h-12 rounded-xl font-semibold transition-all active:scale-[0.98]
+              inline-flex items-center justify-center gap-2
               disabled:opacity-70
               ${isHighlight
                 ? 'bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white shadow-2xl shadow-orange-500/30'
@@ -292,13 +303,17 @@ function PlanCard({
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Открываю оплату…
               </>
-            ) : plan.stars ? (
+            ) : (
               <>
-                <Star className="w-4 h-4 fill-current" />
-                {plan.stars}
-                <span className="font-normal opacity-90 ml-0.5">/ месяц</span>
+                Подписаться · {plan.priceLabel}
+                {plan.stars && (
+                  <span className="opacity-75 inline-flex items-center gap-0.5">
+                    <Star className="w-3.5 h-3.5 fill-current" />
+                    {plan.stars}
+                  </span>
+                )}
               </>
-            ) : 'Выбрать'}
+            )}
           </button>
         )}
       </div>

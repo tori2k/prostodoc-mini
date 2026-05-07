@@ -47,7 +47,7 @@ async function request<T>(
 export interface MeResponse {
   user_id: number
   tg: { id: number; first_name: string; last_name?: string; username?: string }
-  plan: 'free' | 'basic' | 'pro' | 'lawyer'
+  plan: 'free' | 'starter' | 'basic' | 'pro' | 'lawyer'
   is_paid: boolean
   limits: { review: number; generate: number; explain?: number }
   // explain сейчас не лимитируется — может прийти null
@@ -241,7 +241,7 @@ export const api = {
     }),
 
   /** Создать invoice link для оплаты тарифа звёздами. */
-  subscribeInvoice: (plan: 'basic' | 'pro' | 'lawyer') =>
+  subscribeInvoice: (plan: 'starter' | 'basic' | 'pro') =>
     request<{ url: string; plan: string; stars: number }>('/api/subscribe/invoice', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

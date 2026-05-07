@@ -17,10 +17,11 @@ import { SEEN_KEY } from './WelcomePage'
 const BASE_URL = import.meta.env.BASE_URL
 
 const PLAN_LABELS: Record<string, string> = {
-  free:   'Бесплатный',
-  basic:  'Базовый',
-  pro:    'Pro',
-  lawyer: 'Юрист',
+  free:    'Бесплатный',
+  starter: 'Старт',
+  basic:   'Базовый',
+  pro:     'Pro',
+  lawyer:  'Юрист',  // legacy
 }
 
 export function ProfilePage() {
@@ -134,7 +135,10 @@ export function ProfilePage() {
               </div>
             )}
 
-            {!me.is_paid && (
+            {/* Универсальная карточка подписки — видна всем.
+                Free — оранжевый CTA «Снять лимиты».
+                Платный — нейтральная карточка с текущим тарифом и «сменить». */}
+            {!me.is_paid ? (
               <button
                 onClick={() => {
                   haptic('medium')
@@ -147,11 +151,31 @@ export function ProfilePage() {
                 <div className="relative">
                   <div className="flex items-center gap-2.5 mb-1.5">
                     <Sparkles className="w-5 h-5" />
-                    <h3 className="text-base font-bold">Больше проверок</h3>
+                    <h3 className="text-base font-bold">Снять лимиты</h3>
                   </div>
                   <p className="text-sm text-white/85">
-                    Подписка снимает лимиты, добавляет историю на год и эталоны для AI.
+                    От 249 ₽/мес. Подписка добавляет проверки, договоры, историю и эталоны.
                   </p>
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  haptic('light')
+                  navigate('/subscribe')
+                }}
+                className="w-full text-left rounded-2xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] p-4 hover:bg-white/[0.07] transition-colors active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/15 border border-amber-500/25 text-amber-300 flex items-center justify-center flex-shrink-0">
+                    <Crown className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold">Управление подпиской</p>
+                    <p className="text-xs text-white/45">
+                      Тариф {PLAN_LABELS[me.plan] ?? me.plan} · сменить или продлить
+                    </p>
+                  </div>
                 </div>
               </button>
             )}
