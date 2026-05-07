@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  ArrowLeft, Loader2, AlertCircle, ChevronRight, Download, Home,
+  ArrowLeft, Loader2, AlertCircle, ChevronRight, Send, Home,
   FileText, Sparkles, Wand2,
 } from 'lucide-react'
 
@@ -88,24 +88,20 @@ export function GeneratePage() {
     }
   }
 
-  const downloadDocx = async () => {
+  const sendDocxToChat = async () => {
     if (!tpl || !contractHtml) return
     setDownloading(true)
     haptic('medium')
     try {
       const cleanName = tpl.name.replace(/^\W+/, '').trim() || 'contract'
-      const blob = await api.generateDocx(contractHtml, cleanName)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${cleanName}.docx`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      // На iOS Telegram WebView <a download> не работает, поэтому вместо
+      // скачивания шлём через бота прямо в чат — гарантированно дойдёт.
+      await api.generateDocxToChat(contractHtml, cleanName)
+      haptic('heavy')
+      showAlert('DOCX готового договора прислал в чат бота 📎')
     } catch (e: unknown) {
       const err = e as { message?: string }
-      showAlert(`Не удалось скачать DOCX: ${err?.message ?? String(e)}`)
+      showAlert(`Не удалось отправить DOCX: ${err?.message ?? String(e)}`)
     } finally {
       setDownloading(false)
     }
@@ -172,8 +168,8 @@ export function GeneratePage() {
         <ResultView
           tpl={tpl}
           html={contractHtml}
-          onDownload={downloadDocx}
-          downloading={downloading}
+          onSendToChat={sendDocxToChat}
+          sending={downloading}
           onNew={() => {
             setStep('list')
             setTpl(null)
@@ -376,12 +372,12 @@ function FormView({
 // ─── Результат ────────────────────────────────────────────────────────────
 
 function ResultView({
-  tpl, html, onDownload, downloading, onNew,
+  tpl, html, onSendToChat, sending, onNew,
 }: {
   tpl: Template
   html: string
-  onDownload: () => void
-  downloading: boolean
+  onSendToChat: () => void
+  sending: boolean
   onNew: () => void
 }) {
   return (
@@ -408,16 +404,16 @@ function ResultView({
 
       <div className="space-y-2.5">
         <button
-          onClick={onDownload}
-          disabled={downloading}
+          onClick={onSendToChat}
+          disabled={sending}
           className="w-full h-14 rounded-2xl bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white font-bold flex items-center justify-center gap-2 shadow-2xl shadow-orange-500/30 transition-all active:scale-[0.99] disabled:opacity-60"
         >
-          {downloading ? (
+          {sending ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
-            <Download className="w-5 h-5" />
+            <Send className="w-5 h-5" />
           )}
-          Скачать DOCX
+          Прислать DOCX в чат
         </button>
 
         <button

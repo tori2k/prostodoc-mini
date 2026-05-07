@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
 import {
-  ArrowLeft, Home, Share2, Mail, Download,
+  ArrowLeft, Home, Share2, Mail, Send,
   ChevronDown, AlertTriangle, CheckCircle2, Info,
   X, Copy, Check, Loader2,
 } from 'lucide-react'
 
+import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
 import { parseReview, type RiskLevel } from '@/lib/parseReview'
 import { api } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
@@ -35,25 +37,25 @@ const LEVEL_META: Record<RiskLevel, {
 }> = {
   red: {
     label: 'Опасно',
-    bg: 'bg-red-50',
-    border: 'border-red-200',
-    text: 'text-red-700',
+    bg: 'bg-red-500/10',
+    border: 'border-red-400/30',
+    text: 'text-red-300',
     dot: 'bg-red-500',
     icon: AlertTriangle,
   },
   yellow: {
     label: 'Спорно',
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
-    text: 'text-amber-700',
+    bg: 'bg-amber-500/10',
+    border: 'border-amber-400/30',
+    text: 'text-amber-300',
     dot: 'bg-amber-500',
     icon: Info,
   },
   green: {
     label: 'ОК',
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
-    text: 'text-emerald-700',
+    bg: 'bg-emerald-500/10',
+    border: 'border-emerald-400/30',
+    text: 'text-emerald-300',
     dot: 'bg-emerald-500',
     icon: CheckCircle2,
   },
@@ -111,21 +113,18 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
     haptic('medium')
     setPdfLoading(true)
     try {
-      const blob = await api.reviewPdf(rid)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${fileName.replace(/\.[^.]+$/, '')}_review.pdf`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      // Используем «прислать в чат» вместо blob-скачивания —
+      // на iOS Telegram WebView <a download> не работает, юзер
+      // ничего не получает. Через бота — гарантированно доходит.
+      await api.reviewPdfToChat(rid)
+      haptic('heavy')
+      showAlert('PDF-отчёт прислал в чат бота 📎')
     } catch (e: unknown) {
       const err = e as { status?: number; message?: string }
       if (err?.status === 410) {
         showAlert('Срок хранения проверки истёк, прогоните договор заново')
       } else {
-        showAlert(`Не удалось скачать PDF: ${err?.message ?? String(e)}`)
+        showAlert(`Не удалось отправить PDF: ${err?.message ?? String(e)}`)
       }
     } finally {
       setPdfLoading(false)
@@ -160,49 +159,49 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
   }, [parsed])
 
   return (
-    <div className="min-h-dvh bg-muted/40 pb-8">
-      {/* Header */}
-      <header className="bg-card border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+    <DarkScreen noBottomPad>
+      <GlassHeader>
         <button
           onClick={onBack}
-          className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors"
+          className="p-2 -ml-2 rounded-lg hover:bg-white/5 transition-colors"
           aria-label="Назад"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-base font-bold">Результат проверки</h1>
+        <h1 className="text-base font-bold flex-1 text-center">Результат проверки</h1>
         <button
           onClick={onHome}
-          className="p-2 -mr-2 rounded-lg hover:bg-muted transition-colors"
+          className="p-2 -mr-2 rounded-lg hover:bg-white/5 transition-colors"
           aria-label="Главная"
         >
           <Home className="w-5 h-5" />
         </button>
-      </header>
+      </GlassHeader>
 
-      {/* HERO — рейтинг */}
-      <section className={`relative overflow-hidden bg-gradient-to-br ${RATING_BG[parsed.rating]} text-white px-5 pt-8 pb-6 rounded-b-[2rem]`}>
-        <div className="absolute -top-20 -right-16 w-56 h-56 rounded-full bg-white/10 blur-3xl" />
+      {/* HERO — рейтинг (фикс яркий цвет, белый текст — узнаваемо и читаемо) */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className={`relative overflow-hidden bg-gradient-to-br ${RATING_BG[parsed.rating]} text-white px-5 pt-6 pb-6 mx-3 mt-3 rounded-3xl shadow-2xl`}
+      >
+        <div className="absolute -top-20 -right-16 w-56 h-56 rounded-full bg-white/15 blur-3xl" />
         <div className="relative flex items-start gap-4">
           <div className="flex-1">
-            <p className="text-xs uppercase tracking-wider text-white/80 mb-1">
-              Вердикт
-            </p>
-            <h2 className="text-3xl font-extrabold leading-tight mb-2">
+            <p className="text-xs uppercase tracking-wider text-white/85 mb-1">Вердикт</p>
+            <h2 className="text-3xl font-extrabold leading-tight mb-2 text-white">
               {parsed.ratingLabel}
             </h2>
-            <p className="text-sm text-white/90">
-              {parsed.ratingHint}
-            </p>
+            <p className="text-sm text-white/95">{parsed.ratingHint}</p>
             {(parsed.docType || parsed.side) && (
               <div className="mt-4 flex flex-wrap gap-1.5">
                 {parsed.docType && (
-                  <span className="text-[11px] bg-white/15 backdrop-blur-sm rounded-full px-2.5 py-1 border border-white/20">
+                  <span className="text-[11px] bg-black/25 backdrop-blur-sm rounded-full px-2.5 py-1 border border-white/25 text-white">
                     📄 {parsed.docType}
                   </span>
                 )}
                 {parsed.side && (
-                  <span className="text-[11px] bg-white/15 backdrop-blur-sm rounded-full px-2.5 py-1 border border-white/20">
+                  <span className="text-[11px] bg-black/25 backdrop-blur-sm rounded-full px-2.5 py-1 border border-white/25 text-white">
                     👤 {parsed.side}
                   </span>
                 )}
@@ -215,10 +214,10 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
             className="w-20 h-20 -mt-2 object-contain drop-shadow-xl"
           />
         </div>
-      </section>
+      </motion.section>
 
       {/* Счётчики */}
-      <section className="px-5 -mt-4 relative z-10 mb-5">
+      <section className="px-5 mt-4 mb-5">
         <div className="grid grid-cols-3 gap-2">
           <CountBadge count={counts.red}    label="опасных"   level="red" />
           <CountBadge count={counts.yellow} label="спорных"   level="yellow" />
@@ -229,20 +228,20 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
       {/* Список рисков */}
       <section className="px-5 mb-6">
         {parsed.risks.length === 0 ? (
-          <div className="rounded-2xl bg-card border border-border p-6 text-center">
-            <p className="text-sm text-muted-foreground mb-3">
+          <div className="rounded-2xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] p-6 text-center">
+            <p className="text-sm text-white/55 mb-3">
               AI не выделил конкретные риски — посмотрите полный текст ответа.
             </p>
             <button
               onClick={() => setShowRaw(true)}
-              className="text-sm font-semibold text-[#1E3A8A] underline underline-offset-4"
+              className="text-sm font-semibold text-orange-300 underline underline-offset-4"
             >
               Открыть полный текст
             </button>
           </div>
         ) : (
           <div className="space-y-2.5">
-            <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider">
+            <h3 className="text-xs font-semibold mb-3 text-white/45 uppercase tracking-wider">
               Что нашёл AI
             </h3>
             {parsed.risks.map((risk, i) => (
@@ -252,7 +251,7 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
         )}
       </section>
 
-      {/* Полный текст (свёрнутый) — для случая когда хочется проверить парсер */}
+      {/* Полный текст */}
       {parsed.risks.length > 0 && (
         <section className="px-5 mb-6">
           <button
@@ -260,13 +259,13 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
               setShowRaw(!showRaw)
               haptic('light')
             }}
-            className="w-full flex items-center justify-between p-3 rounded-xl bg-card border border-border text-sm font-medium"
+            className="w-full flex items-center justify-between p-3 rounded-xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] text-sm font-medium text-white"
           >
             Полный текст ответа AI
-            <ChevronDown className={`w-4 h-4 transition-transform ${showRaw ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-white/55 transition-transform ${showRaw ? 'rotate-180' : ''}`} />
           </button>
           {showRaw && (
-            <div className="doc-surface mt-2 rounded-xl border border-border p-4">
+            <div className="doc-surface mt-2 rounded-xl border border-white/15 p-4 shadow-2xl">
               <div
                 className="text-sm leading-relaxed whitespace-pre-wrap"
                 dangerouslySetInnerHTML={{ __html: parsed.raw }}
@@ -278,7 +277,7 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
 
       {/* Действия */}
       <section className="px-5 space-y-2">
-        <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider">
+        <h3 className="text-xs font-semibold mb-3 text-white/45 uppercase tracking-wider">
           Что дальше
         </h3>
         <ActionRow
@@ -290,9 +289,9 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
           accent="orange"
         />
         <ActionRow
-          icon={pdfLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-          title="PDF-отчёт"
-          desc={pdfLoading ? 'Готовлю файл…' : 'Скачать полный отчёт на телефон'}
+          icon={pdfLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+          title="PDF-отчёт в чат бота"
+          desc={pdfLoading ? 'Готовлю файл…' : 'Пришлю готовый PDF в наш чат'}
           onClick={onPdf}
           disabled={pdfLoading}
           accent="blue"
@@ -306,8 +305,7 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
         />
       </section>
 
-      {/* Подвал */}
-      <p className="text-center text-[11px] text-muted-foreground mt-8 px-5">
+      <p className="text-center text-[11px] text-white/40 mt-8 pb-6 px-5">
         Проверено · {fileName}
       </p>
 
@@ -317,15 +315,26 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
           onClose={() => setLetterText(null)}
         />
       )}
-    </div>
+    </DarkScreen>
   )
 }
 
 function LetterModal({ text, onClose }: { text: string; onClose: () => void }) {
   const [copied, setCopied] = useState(false)
+
   const onCopy = async () => {
+    // В буфер кладём plain-text без HTML-тегов: получатель будет пастить
+    // в Gmail/мессенджер где разметка не нужна.
+    const plain = text
+      .replace(/<\/?(b|i|strong|em|u)>/gi, '')
+      .replace(/<blockquote>/gi, '\n\n')
+      .replace(/<\/blockquote>/gi, '\n\n')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
     try {
-      await navigator.clipboard.writeText(text)
+      await navigator.clipboard.writeText(plain)
       setCopied(true)
       haptic('heavy')
       setTimeout(() => setCopied(false), 2000)
@@ -336,21 +345,24 @@ function LetterModal({ text, onClose }: { text: string; onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={onClose}
     >
-      <div
+      <motion.div
         onClick={(e) => e.stopPropagation()}
-        className="bg-card w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[90dvh] flex flex-col"
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="bg-[#0f0f15] border-t border-white/10 sm:border w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[90dvh] flex flex-col shadow-2xl"
       >
-        <header className="px-5 py-4 flex items-center justify-between border-b border-border">
+        <header className="px-5 py-4 flex items-center justify-between border-b border-white/10">
           <div className="flex items-center gap-2">
-            <Mail className="w-5 h-5 text-orange-500" />
-            <h3 className="text-base font-bold">Письмо контрагенту</h3>
+            <Mail className="w-5 h-5 text-orange-300" />
+            <h3 className="text-base font-bold text-white">Письмо контрагенту</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 -mr-1.5 rounded-lg hover:bg-muted"
+            className="p-1.5 -mr-1.5 rounded-lg hover:bg-white/5 text-white/55"
             aria-label="Закрыть"
           >
             <X className="w-5 h-5" />
@@ -358,14 +370,17 @@ function LetterModal({ text, onClose }: { text: string; onClose: () => void }) {
         </header>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          <div className="doc-surface rounded-xl border border-border p-4">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">
-              {text}
-            </p>
+          {/* Письмо рендерим как HTML — AI присылает с тегами <b>/<i>/<blockquote>.
+              Лист бумаги для читаемости. */}
+          <div className="doc-surface rounded-xl border border-white/15 p-4 shadow-2xl">
+            <div
+              className="text-sm leading-relaxed [&>blockquote]:border-l-4 [&>blockquote]:border-orange-400 [&>blockquote]:pl-3 [&>blockquote]:my-3 [&>blockquote]:text-slate-700"
+              dangerouslySetInnerHTML={{ __html: text.replace(/\n/g, '<br />') }}
+            />
           </div>
         </div>
 
-        <footer className="px-5 py-4 border-t border-border">
+        <footer className="px-5 py-4 border-t border-white/10">
           <button
             onClick={onCopy}
             className={`
@@ -373,7 +388,7 @@ function LetterModal({ text, onClose }: { text: string; onClose: () => void }) {
               transition-all active:scale-[0.99]
               ${copied
                 ? 'bg-emerald-500 text-white'
-                : 'bg-[#F97316] text-white shadow-lg shadow-orange-500/30'}
+                : 'bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white shadow-2xl shadow-orange-500/30'}
             `}
           >
             {copied ? (
@@ -384,12 +399,12 @@ function LetterModal({ text, onClose }: { text: string; onClose: () => void }) {
             ) : (
               <>
                 <Copy className="w-4 h-4" />
-                Скопировать в буфер
+                Скопировать без разметки
               </>
             )}
           </button>
         </footer>
-      </div>
+      </motion.div>
     </div>
   )
 }
@@ -401,12 +416,12 @@ function CountBadge({ count, label, level }: {
 }) {
   const meta = LEVEL_META[level]
   return (
-    <div className={`rounded-2xl ${meta.bg} ${meta.border} border px-3 py-3 text-center`}>
+    <div className={`rounded-2xl backdrop-blur-xl ${meta.bg} ${meta.border} border px-3 py-3 text-center`}>
       <div className="flex items-center justify-center gap-1.5 mb-0.5">
         <span className={`w-2 h-2 rounded-full ${meta.dot}`} />
         <span className={`text-2xl font-extrabold ${meta.text}`}>{count}</span>
       </div>
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[10px] uppercase tracking-wide text-white/55">{label}</p>
     </div>
   )
 }
@@ -426,28 +441,28 @@ function RiskCard({ risk }: { risk: { level: RiskLevel; title: string; body: str
         }
       }}
       className={`
-        w-full text-left rounded-2xl ${meta.bg} ${meta.border} border
+        w-full text-left rounded-2xl backdrop-blur-xl ${meta.bg} ${meta.border} border
         transition-all
         ${hasBody ? 'cursor-pointer' : 'cursor-default'}
       `}
     >
       <div className="p-4">
         <div className="flex items-start gap-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${meta.dot} text-white`}>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${meta.dot} text-white shadow-lg`}>
             <Icon className="w-4 h-4" />
           </div>
           <div className="flex-1 min-w-0">
             <div className={`text-[10px] uppercase tracking-wider font-bold ${meta.text} mb-1`}>
               {meta.label}
             </div>
-            <p className="text-sm font-semibold leading-snug text-slate-900">{risk.title}</p>
+            <p className="text-sm font-semibold leading-snug text-white">{risk.title}</p>
           </div>
           {hasBody && (
-            <ChevronDown className={`w-4 h-4 text-muted-foreground flex-shrink-0 mt-1 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-white/45 flex-shrink-0 mt-1 transition-transform ${expanded ? 'rotate-180' : ''}`} />
           )}
         </div>
         {expanded && hasBody && (
-          <p className="text-sm text-slate-700 leading-relaxed mt-3 pt-3 border-t border-slate-200">
+          <p className="text-sm text-white/80 leading-relaxed mt-3 pt-3 border-t border-white/10">
             {risk.body}
           </p>
         )}
@@ -465,22 +480,22 @@ function ActionRow({ icon, title, desc, onClick, accent, disabled }: {
   disabled?: boolean
 }) {
   const accents = {
-    orange: 'text-orange-600 bg-orange-50',
-    blue:   'text-blue-600 bg-blue-50',
-    green:  'text-emerald-600 bg-emerald-50',
+    orange: 'text-orange-300 bg-orange-500/15 border-orange-500/25',
+    blue:   'text-blue-300 bg-blue-500/15 border-blue-500/25',
+    green:  'text-emerald-300 bg-emerald-500/15 border-emerald-500/25',
   }
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
+      className="w-full flex items-center gap-3 p-3 rounded-xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-colors active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
     >
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${accents[accent]}`}>
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border ${accents[accent]}`}>
         {icon}
       </div>
       <div className="flex-1 min-w-0 text-left">
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="text-xs text-muted-foreground">{desc}</p>
+        <p className="text-sm font-semibold text-white">{title}</p>
+        <p className="text-xs text-white/45">{desc}</p>
       </div>
     </button>
   )

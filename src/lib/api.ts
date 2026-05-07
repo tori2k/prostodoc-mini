@@ -118,7 +118,7 @@ export const api = {
       body: JSON.stringify({ clause }),
     }),
 
-  /** Скачать PDF-отчёт по review_id. */
+  /** Скачать PDF-отчёт по review_id (blob — для desktop). */
   reviewPdf: async (reviewId: string): Promise<Blob> => {
     const headers = new Headers()
     headers.set('X-Telegram-Init-Data', getInitData())
@@ -133,6 +133,14 @@ export const api = {
     }
     return res.blob()
   },
+
+  /** Прислать PDF-отчёт юзеру в чат бота (mobile-friendly). */
+  reviewPdfToChat: (reviewId: string) =>
+    request<{ ok: true }>('/api/review/pdf/to-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ review_id: reviewId }),
+    }),
 
   /** Эталоны (Pro / Lawyer). */
   etalonsList: () => request<{ items: Etalon[]; max: number }>('/api/etalons'),
@@ -170,7 +178,7 @@ export const api = {
     }),
 
   /**
-   * Скачать DOCX уже сгенерированного договора.
+   * Скачать DOCX уже сгенерированного договора (blob — для desktop).
    * Запрос идёт мимо обычного request<T>() — нужен blob, не json.
    */
   generateDocx: async (contractHtml: string, title: string): Promise<Blob> => {
@@ -188,6 +196,14 @@ export const api = {
     }
     return res.blob()
   },
+
+  /** Прислать DOCX готового договора в чат бота (mobile-friendly). */
+  generateDocxToChat: (contractHtml: string, title: string) =>
+    request<{ ok: true }>('/api/generate/docx/to-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contract_html: contractHtml, title }),
+    }),
 }
 
 export { ApiError }
