@@ -68,10 +68,16 @@ export interface ReferralInfo {
 }
 
 export interface HistoryItem {
+  id: number
   ts: string
   action: 'review' | 'generate' | 'explain'
   title: string
   summary?: string
+}
+
+export interface HistoryItemDetail extends HistoryItem {
+  /** Полный HTML результата AI — review_html или contract_html. */
+  payload: string | null
 }
 
 export interface HistoryResponse {
@@ -103,6 +109,10 @@ export const api = {
   me:      () => request<MeResponse>('/api/me'),
   history: (limit = 20) =>
     request<HistoryResponse>(`/api/history?limit=${limit}`),
+
+  /** Полная запись истории — с payload (review_html / contract_html). */
+  historyItem: (id: number) =>
+    request<HistoryItemDetail>(`/api/history/${id}`),
 
   /** Загрузить договор для AI-проверки.
    *  onUploadProgress — колбэк 0..1 на прогресс upload-фазы. Используется

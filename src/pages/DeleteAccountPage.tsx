@@ -9,6 +9,7 @@ import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
 import { api } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
 import { humanError } from '@/lib/errors'
+import { track, EVT } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
 const CONFIRM_WORD = 'УДАЛИТЬ'
@@ -25,6 +26,7 @@ export function DeleteAccountPage() {
     if (!canDelete) return
     setDeleting(true)
     haptic('heavy')
+    track(EVT.account_delete_clicked)
     try {
       const r = await api.accountDelete(confirm.trim())
       setDone({

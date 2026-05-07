@@ -105,4 +105,12 @@ export const EVT = {
 
   referral_attributed:      'referral_attributed',
   referral_link_copied:     'referral_link_copied',
+
+  // Funnel: на какие экраны заходят и как часто
+  history_opened:           'history_opened',
+  history_item_opened:      'history_item_opened',
+  profile_opened:           'profile_opened',
+  feedback_submitted:       'feedback_submitted',
+  account_delete_clicked:   'account_delete_clicked',
+  notifications_toggled:    'notifications_toggled',
 } as const

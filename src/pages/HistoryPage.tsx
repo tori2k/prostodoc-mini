@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  FileSearch, FilePen, BookOpen, Sparkles,
+  FileSearch, FilePen, BookOpen, Sparkles, X,
 } from 'lucide-react'
 
 import { DarkScreen } from '@/components/DarkScreen'
-import { api, type HistoryItem } from '@/lib/api'
-import { haptic } from '@/lib/telegram'
+import { api, type HistoryItem, type HistoryItemDetail } from '@/lib/api'
+import { haptic, showAlert } from '@/lib/telegram'
+import { humanError } from '@/lib/errors'
+import { sanitize } from '@/lib/sanitize'
+import { track, EVT } from '@/lib/analytics'
 import { BottomNav } from './HomePage'
 
 const BASE_URL = import.meta.env.BASE_URL
@@ -27,13 +30,35 @@ export function HistoryPage() {
   const navigate = useNavigate()
   const [items, setItems] = useState<HistoryItem[] | null>(null)
   const [loading, setLoading] = useState(true)
+  const [opened, setOpened] = useState<HistoryItemDetail | null>(null)
+  const [openLoading, setOpenLoading] = useState(false)
 
   useEffect(() => {
+    track(EVT.history_opened)
     api.history(100)
       .then((r) => setItems(r.items))
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
   }, [])
+
+  const onOpen = async (item: HistoryItem) => {
+    haptic('light')
+    track(EVT.history_item_opened, { action: item.action })
+    setOpenLoading(true)
+    try {
+      const detail = await api.historyItem(item.id)
+      if (!detail.payload) {
+        // Старая запись (до миграции) или action без payload — фолбэк
+        showAlert('Эта запись была сделана до того как мы начали хранить полный текст. Прогоните заново, чтобы получить вердикт.')
+        return
+      }
+      setOpened(detail)
+    } catch (e) {
+      showAlert(humanError(e, 'history'))
+    } finally {
+      setOpenLoading(false)
+    }
+  }
 
   const grouped = items ? groupByDay(items) : []
 
@@ -76,7 +101,12 @@ export function HistoryPage() {
                 </h3>
                 <div className="space-y-2">
                   {group.map((item, i) => (
-                    <HistoryRow key={`${day}-${i}`} item={item} />
+                    <HistoryRow
+                      key={`${day}-${i}`}
+                      item={item}
+                      loading={openLoading}
+                      onOpen={() => onOpen(item)}
+                    />
                   ))}
                 </div>
               </section>
@@ -86,15 +116,32 @@ export function HistoryPage() {
       </div>
 
       <BottomNav active="history" />
+
+      {opened && (
+        <HistoryDetailModal
+          item={opened}
+          onClose={() => setOpened(null)}
+        />
+      )}
     </DarkScreen>
   )
 }
 
-function HistoryRow({ item }: { item: HistoryItem }) {
+function HistoryRow({
+  item, loading, onOpen,
+}: {
+  item: HistoryItem
+  loading: boolean
+  onOpen: () => void
+}) {
   const meta = ACTION_META[item.action] ?? ACTION_META.review
   const Icon = meta.icon
   return (
-    <div className="rounded-2xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] p-4 flex items-start gap-3">
+    <button
+      onClick={onOpen}
+      disabled={loading}
+      className="w-full text-left rounded-2xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] p-4 flex items-start gap-3 transition-colors hover:bg-white/[0.07] active:scale-[0.99] disabled:opacity-60"
+    >
       <div className={`w-10 h-10 rounded-xl border flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.color}`}>
         <Icon className="w-5 h-5" />
       </div>
@@ -116,6 +163,56 @@ function HistoryRow({ item }: { item: HistoryItem }) {
           </p>
         )}
       </div>
+    </button>
+  )
+}
+
+function HistoryDetailModal({
+  item, onClose,
+}: {
+  item: HistoryItemDetail
+  onClose: () => void
+}) {
+  // Простая «бумажка» — показываем raw HTML результата на белом листе.
+  // Для полноценного вердикта со счётчиками/хиро лучше прогнать договор
+  // заново — здесь главное «вспомнить что было», не повторять весь UX.
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        onClick={(e) => e.stopPropagation()}
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="bg-[#0f0f15] border-t border-white/10 sm:border w-full sm:max-w-2xl sm:rounded-3xl rounded-t-3xl max-h-[90dvh] flex flex-col shadow-2xl"
+      >
+        <header className="px-5 py-4 flex items-center justify-between border-b border-white/10">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-white/55">
+              {ACTION_META[item.action]?.label ?? 'Запись'} · {formatTime(item.ts)}
+            </p>
+            <h3 className="text-base font-bold text-white truncate">{item.title}</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 -mr-1.5 ml-3 rounded-lg hover:bg-white/5 text-white/55"
+            aria-label="Закрыть"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="doc-surface rounded-xl border border-white/15 p-4 shadow-2xl">
+            <div
+              className="text-sm leading-relaxed whitespace-pre-wrap"
+              dangerouslySetInnerHTML={{ __html: sanitize(item.payload || '') }}
+            />
+          </div>
+        </div>
+      </motion.div>
     </div>
   )
 }

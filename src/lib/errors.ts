@@ -31,6 +31,8 @@ interface ApiErrorShape {
 const QUOTA_BY_CONTEXT: Partial<Record<ErrorContext, string>> = {
   review:   'Лимит проверок исчерпан до конца месяца. Подписка снимает ограничения.',
   generate: 'Лимит договоров исчерпан до конца месяца. Подписка снимает ограничения.',
+  // explain — 429 это rate-limit, не квота
+  explain:  'Слишком часто. Подождите минуту и попробуйте снова.',
 }
 
 const EXPIRED_BY_CONTEXT: Partial<Record<ErrorContext, string>> = {
@@ -87,6 +89,12 @@ export function humanError(e: unknown, context?: ErrorContext): string {
   }
   if (detailCode === 'unknown_template') {
     return 'Шаблон не найден. Обновите приложение.'
+  }
+  if (detailCode === 'not_a_contract') {
+    return detailMsg ?? 'Описание слишком короткое или непонятное. Уточните: тип договора, стороны, сумма, сроки.'
+  }
+  if (detailCode === 'rate_limited') {
+    return detailMsg ?? 'Слишком часто. Подождите минуту и попробуйте снова.'
   }
   if (detailCode === 'send_failed') {
     return 'Не удалось отправить файл в чат. Откройте бота и напишите /start, затем попробуйте снова.'

@@ -99,11 +99,20 @@ export function haptic(style: 'light' | 'medium' | 'heavy' = 'light') {
   tg?.HapticFeedback?.impactOccurred(style)
 }
 
-/** Дружественный alert через нативный TG-диалог если есть, иначе window.alert */
+/** Дружественный alert через нативный TG-диалог если есть, иначе window.alert.
+ *  На Telegram WebApp 6.0 (старые клиенты) вызов showAlert кидает
+ *  WebAppMethodUnsupported — fallback на window.alert обязателен. */
 export function showAlert(msg: string) {
   const tg = getTelegramWebApp()
-  if (tg?.showAlert) tg.showAlert(msg)
-  else alert(msg)
+  if (tg?.showAlert) {
+    try {
+      tg.showAlert(msg)
+      return
+    } catch {
+      // версия WebApp < 6.2 — showAlert недоступен, идём в браузерный alert
+    }
+  }
+  try { alert(msg) } catch { /* iframe без alert разрешения — молча */ }
 }
 
 /** Telegram-WebApp занимает всю высоту экрана в чате (без свайпа закрытия) */

@@ -11,6 +11,7 @@ import { ProgressStepper, GENERATE_STEPS } from '@/components/ProgressStepper'
 import { api, ApiError, type Template } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
 import { humanError } from '@/lib/errors'
+import { sanitize } from '@/lib/sanitize'
 import { track, EVT } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
@@ -445,7 +446,7 @@ function ResultView({
         <div className="doc-surface rounded-2xl border border-white/10 p-5 max-h-[60dvh] overflow-y-auto shadow-2xl">
           <div
             className="text-sm leading-relaxed whitespace-pre-wrap"
-            dangerouslySetInnerHTML={{ __html: html }}
+            dangerouslySetInnerHTML={{ __html: sanitize(html) }}
           />
         </div>
       </div>

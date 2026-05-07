@@ -9,6 +9,7 @@ import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
 import { api } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
 import { humanError } from '@/lib/errors'
+import { track, EVT } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
 const MAX_LEN = 5000
@@ -26,6 +27,7 @@ export function FeedbackPage() {
     haptic('medium')
     try {
       await api.feedback(trimmed)
+      track(EVT.feedback_submitted, { len: trimmed.length })
       setSent(true)
       haptic('heavy')
     } catch (e: unknown) {

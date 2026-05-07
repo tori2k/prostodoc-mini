@@ -14,6 +14,7 @@ import { api } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
 import { track, EVT } from '@/lib/analytics'
 import { humanError } from '@/lib/errors'
+import { sanitize } from '@/lib/sanitize'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -294,7 +295,7 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
             <div className="doc-surface mt-2 rounded-xl border border-white/15 p-4 shadow-2xl">
               <div
                 className="text-sm leading-relaxed whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ __html: parsed.raw }}
+                dangerouslySetInnerHTML={{ __html: sanitize(parsed.raw) }}
               />
             </div>
           )}
@@ -422,7 +423,7 @@ function LetterModal({
             <div className="doc-surface rounded-xl border border-white/15 p-4 shadow-2xl">
               <div
                 className="text-sm leading-relaxed [&>blockquote]:border-l-4 [&>blockquote]:border-orange-400 [&>blockquote]:pl-3 [&>blockquote]:my-3 [&>blockquote]:text-slate-700"
-                dangerouslySetInnerHTML={{ __html: text.replace(/\n/g, '<br />') }}
+                dangerouslySetInnerHTML={{ __html: sanitize(text.replace(/\n/g, '<br />')) }}
               />
             </div>
           )}

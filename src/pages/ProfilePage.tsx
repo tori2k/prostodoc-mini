@@ -31,6 +31,7 @@ export function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    track(EVT.profile_opened)
     api.me()
       .then(setMe)
       .catch((e: unknown) => {
@@ -418,6 +419,7 @@ function NotificationsToggle({
     setBusy(true)
     try {
       const r = await api.notificationsToggle(!enabled)
+      track(EVT.notifications_toggled, { enabled: r.enabled })
       onToggle(r.enabled)
     } catch (e: unknown) {
       showAlert(humanError(e))
