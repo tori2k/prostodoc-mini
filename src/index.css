@@ -23,6 +23,15 @@
   --color-ring: #1E3A8A;
 
   --radius: 0.5rem;
+
+  /* Анимация border-beam — бегущий луч по периметру карточки.
+   * Используется в src/components/ui/border-beam.tsx, классом animate-border-beam.
+   * В Tailwind v4 ключ --animate-* и @keyframes объявляются прямо в @theme. */
+  --animate-border-beam: border-beam calc(var(--duration) * 1s) infinite linear;
+
+  @keyframes border-beam {
+    100% { offset-distance: 100%; }
+  }
 }
 
 /* ─── Тёмная тема ──────────────────────────────────────────────────────

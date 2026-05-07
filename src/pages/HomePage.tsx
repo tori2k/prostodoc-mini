@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 
 import { Card } from '@/components/ui/card'
+import { BorderBeam } from '@/components/ui/border-beam'
 import { api, type MeResponse, ApiError } from '@/lib/api'
 import { haptic, getCurrentUser } from '@/lib/telegram'
 
@@ -117,6 +118,7 @@ export function HomePage() {
             navigate('/generate')
           }}
           accent="orange"
+          glow
         />
         <SecondaryCard
           icon={<BookOpen className="w-5 h-5" />}
@@ -194,13 +196,15 @@ function PrimaryCTA({
 }
 
 function SecondaryCard({
-  icon, title, desc, onClick, accent,
+  icon, title, desc, onClick, accent, glow,
 }: {
   icon: React.ReactNode
   title: string
   desc: string
   onClick: () => void
   accent: 'orange' | 'green' | 'blue'
+  /** glow=true рисует анимированную border-beam рамку — для CTA-карточек */
+  glow?: boolean
 }) {
   const accents = {
     orange: 'text-orange-600 bg-orange-50',
@@ -210,7 +214,7 @@ function SecondaryCard({
   return (
     <Card
       onClick={onClick}
-      className="cursor-pointer p-4 hover:bg-muted/50 transition-colors active:scale-[0.99]"
+      className="relative overflow-hidden cursor-pointer p-4 hover:bg-muted/50 transition-colors active:scale-[0.99]"
     >
       <div className="flex items-center gap-3">
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${accents[accent]}`}>
@@ -222,6 +226,12 @@ function SecondaryCard({
         </div>
         <ArrowRight className="w-4 h-4 text-muted-foreground" />
       </div>
+      {glow && (
+        <>
+          <BorderBeam size={150} duration={9} colorFrom="#F97316" colorTo="#FBBF24" />
+          <BorderBeam size={150} duration={9} delay={4.5} colorFrom="#F97316" colorTo="#FBBF24" />
+        </>
+      )}
     </Card>
   )
 }
