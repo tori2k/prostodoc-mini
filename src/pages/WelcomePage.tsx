@@ -1,66 +1,22 @@
 import { useNavigate } from 'react-router-dom'
 import { Upload, Sparkles, AlertTriangle, Mail, ShieldCheck } from 'lucide-react'
 
-import RadialOrbitalTimeline, { type OrbitalNode } from '@/components/ui/radial-orbital-timeline'
-import { Button } from '@/components/ui/button'
 import { haptic } from '@/lib/telegram'
 
-const NODES: OrbitalNode[] = [
-  {
-    id: 1,
-    title: 'Договор',
-    date: 'шаг 1',
-    content: 'Загрузите PDF, Word или вставьте текст. Поддерживаем сканы с текстовым слоем.',
-    category: 'Загрузка',
-    icon: Upload,
-    relatedIds: [2],
-    status: 'completed',
-    energy: 100,
-  },
-  {
-    id: 2,
-    title: 'AI-юрист',
-    date: 'шаг 2',
-    content: 'Claude читает договор за 30 секунд. Понимает контекст: услуги, аренда, поставка, NDA.',
-    category: 'Анализ',
-    icon: Sparkles,
-    relatedIds: [1, 3],
-    status: 'in-progress',
-    energy: 85,
-  },
-  {
-    id: 3,
-    title: 'Риски',
-    date: 'шаг 3',
-    content: 'Карточка-вердикт: 🔴 опасные, 🟡 спорные, 🟢 нормальные пункты — с конкретными цитатами.',
-    category: 'Результат',
-    icon: AlertTriangle,
-    relatedIds: [2, 4],
-    status: 'in-progress',
-    energy: 70,
-  },
-  {
-    id: 4,
-    title: 'Письмо',
-    date: 'шаг 4',
-    content: 'Готовое письмо контрагенту со списком правок. Тапните по тексту — Telegram скопирует.',
-    category: 'Действие',
-    icon: Mail,
-    relatedIds: [3, 5],
-    status: 'pending',
-    energy: 55,
-  },
-  {
-    id: 5,
-    title: 'Защита',
-    date: 'шаг 5',
-    content: 'Подписываете договор без скрытых рисков. PDF-отчёт остаётся у вас в истории.',
-    category: 'Финал',
-    icon: ShieldCheck,
-    relatedIds: [4],
-    status: 'pending',
-    energy: 100,
-  },
+const BASE_URL = import.meta.env.BASE_URL
+
+interface Step {
+  icon: React.ElementType
+  title: string
+  desc: string
+}
+
+const STEPS: Step[] = [
+  { icon: Upload,        title: 'Загружаете договор',     desc: 'PDF, Word или текст из чата' },
+  { icon: Sparkles,      title: 'AI читает за 30 секунд', desc: 'Понимает контекст любого договора' },
+  { icon: AlertTriangle, title: 'Видите все риски',       desc: '🔴 опасные · 🟡 спорные · 🟢 нормальные' },
+  { icon: Mail,          title: 'Получаете письмо',       desc: 'Готовый текст для контрагента' },
+  { icon: ShieldCheck,   title: 'Подписываете без рисков',desc: 'Полный PDF-отчёт остаётся у вас' },
 ]
 
 const SEEN_KEY = 'prostodoc:welcomeSeen'
@@ -75,23 +31,85 @@ export function WelcomePage() {
   }
 
   return (
-    <div className="flex flex-col h-dvh bg-black text-white">
-      <div className="flex-1 relative">
-        <RadialOrbitalTimeline timelineData={NODES} />
+    <div className="min-h-dvh bg-gradient-to-br from-[#1E3A8A] via-[#1E3A8A] to-[#0F1E4D] text-white relative overflow-hidden">
+      {/* Декоративные размытые круги */}
+      <div className="pointer-events-none absolute inset-0 opacity-30">
+        <div className="absolute -top-40 -right-32 w-96 h-96 rounded-full bg-orange-500/40 blur-3xl" />
+        <div className="absolute top-1/3 -left-40 w-96 h-96 rounded-full bg-indigo-400/30 blur-3xl" />
+        <div className="absolute -bottom-40 left-1/4 w-80 h-80 rounded-full bg-purple-500/20 blur-3xl" />
       </div>
 
-      <div className="px-6 pt-4 pb-8 bg-gradient-to-t from-black via-black/95 to-transparent">
-        <p className="text-center text-sm text-white/70 mb-4">
-          Тапните по планетам, чтобы узнать как ProstoDoc проверяет договоры
-        </p>
-        <Button
+      <div className="relative px-6 pt-10 pb-6">
+        {/* Маскот по центру */}
+        <div className="flex justify-center mb-4">
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-orange-500/30 blur-3xl scale-90" />
+            <img
+              src={`${BASE_URL}mascot/raccoon-friendly.png`}
+              alt="Енот ProstoDoc"
+              className="relative w-44 h-44 object-contain drop-shadow-2xl"
+            />
+          </div>
+        </div>
+
+        {/* Заголовок */}
+        <div className="text-center mb-8">
+          <p className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-white/70 mb-3">
+            <Sparkles className="w-3.5 h-3.5" />
+            AI-юрист в Telegram
+          </p>
+          <h1 className="text-4xl font-extrabold leading-tight mb-3">
+            ProstoDoc
+          </h1>
+          <p className="text-base text-white/85 max-w-sm mx-auto">
+            Защитит вас от плохих договоров за 30 секунд
+          </p>
+        </div>
+
+        {/* Шаги */}
+        <div className="space-y-2.5 mb-8">
+          {STEPS.map((step, i) => {
+            const Icon = step.icon
+            return (
+              <div
+                key={i}
+                className="flex items-start gap-3 rounded-2xl bg-white/[0.07] backdrop-blur-sm border border-white/10 px-4 py-3"
+              >
+                <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <p className="text-sm font-semibold leading-tight mb-0.5">
+                    {step.title}
+                  </p>
+                  <p className="text-xs text-white/65 leading-snug">
+                    {step.desc}
+                  </p>
+                </div>
+                <div className="text-[11px] font-mono text-white/40 self-center">
+                  {String(i + 1).padStart(2, '0')}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* CTA */}
+        <button
           onClick={goToHome}
-          variant="accent"
-          size="lg"
-          className="w-full font-semibold tracking-wide"
+          className="
+            w-full h-14 rounded-2xl bg-[#F97316] text-white font-bold
+            shadow-lg shadow-orange-500/40
+            transition-all active:scale-[0.98]
+            text-base
+          "
         >
-          Начать пользоваться
-        </Button>
+          Начать пользоваться →
+        </button>
+
+        <p className="text-center text-xs text-white/50 mt-4">
+          Первая проверка — бесплатно
+        </p>
       </div>
     </div>
   )
