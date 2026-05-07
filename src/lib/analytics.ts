@@ -17,7 +17,10 @@ declare global {
   }
 }
 
-const COUNTER_ID = Number(import.meta.env.VITE_YM_COUNTER_ID ?? 0) || 0
+// Counter ID Яндекс Метрики. Дефолт — наш прод-счётчик 109105326.
+// VITE_YM_COUNTER_ID может переопределить его (например, поставить 0
+// чтобы выключить метрику локально или указать тестовый счётчик).
+const COUNTER_ID = Number(import.meta.env.VITE_YM_COUNTER_ID ?? 109105326) || 0
 
 let initialized = false
 
