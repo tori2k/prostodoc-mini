@@ -10,6 +10,8 @@ import { GeneratePage } from '@/pages/GeneratePage'
 import { ExplainPage } from '@/pages/ExplainPage'
 import { EtalonsPage } from '@/pages/EtalonsPage'
 import { SubscribePage } from '@/pages/SubscribePage'
+import { FeedbackPage } from '@/pages/FeedbackPage'
+import { DeleteAccountPage } from '@/pages/DeleteAccountPage'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ready, expandViewport, isInTelegram } from '@/lib/telegram'
 import { initYM, hit, track, EVT } from '@/lib/analytics'
@@ -73,6 +75,8 @@ export default function App() {
         <Route path="/generate" element={<GeneratePage />} />
         <Route path="/explain"  element={<ExplainPage />} />
         <Route path="/etalons"  element={<EtalonsPage />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
+        <Route path="/account/delete" element={<DeleteAccountPage />} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </HashRouter>

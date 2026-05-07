@@ -156,6 +156,28 @@ export const api = {
   /** Реферальная статистика и ссылка для шаринга. */
   referral: () => request<ReferralInfo>('/api/referral'),
 
+  /** Отправить обратную связь админу. */
+  feedback: (text: string) =>
+    request<{ ok: true }>('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    }),
+
+  /**
+   * Удалить все данные юзера (право на забвение, ФЗ-152 ст.17).
+   * confirm должно быть строго "УДАЛИТЬ" — защита от случайного клика.
+   */
+  accountDelete: (confirm: string) =>
+    request<{ ok: true; deleted: { etalons: number; usage: boolean; logs: number; feedback: number } }>(
+      '/api/account/delete',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm }),
+      },
+    ),
+
   /** Эталоны (Pro / Lawyer). */
   etalonsList: () => request<{ items: Etalon[]; max: number }>('/api/etalons'),
   etalonsAdd: (file: File, name?: string) => {

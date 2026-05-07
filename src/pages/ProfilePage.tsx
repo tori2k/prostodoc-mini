@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Crown, Sparkles, AlertCircle, Compass, FileStack, Gift, Copy, Check,
+  MessageCircle, Trash2,
 } from 'lucide-react'
 
 import { DarkScreen } from '@/components/DarkScreen'
@@ -189,6 +190,41 @@ export function ProfilePage() {
               <div className="flex-1 text-left">
                 <p className="text-sm font-semibold">Как работает ProstoDoc</p>
                 <p className="text-xs text-white/45">Посмотреть онбординг ещё раз</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                haptic('light')
+                navigate('/feedback')
+              }}
+              className="w-full flex items-center gap-3 p-3 rounded-xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-colors active:scale-[0.99]"
+            >
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 flex items-center justify-center flex-shrink-0">
+                <MessageCircle className="w-5 h-5" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold">Обратная связь</p>
+                <p className="text-xs text-white/45">Баг, идея, проблема — напишите</p>
+              </div>
+            </button>
+
+            <h3 className="text-xs uppercase tracking-wider text-white/35 font-semibold px-1 mt-5 mb-1">
+              Управление данными
+            </h3>
+            <button
+              onClick={() => {
+                haptic('light')
+                navigate('/account/delete')
+              }}
+              className="w-full flex items-center gap-3 p-3 rounded-xl backdrop-blur-xl bg-white/[0.02] border border-white/[0.05] hover:bg-red-500/[0.06] hover:border-red-500/20 transition-colors active:scale-[0.99]"
+            >
+              <div className="w-10 h-10 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300/80 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold text-white/85">Удалить мои данные</p>
+                <p className="text-xs text-white/40">Право на забвение, ФЗ-152 ст. 17</p>
               </div>
             </button>
           </>
