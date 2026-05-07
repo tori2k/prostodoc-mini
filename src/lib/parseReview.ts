@@ -2,17 +2,22 @@
  * Парсер review-разметки от Claude в структурированный объект.
  *
  * AI возвращает HTML вида:
- *   🎯 <b>Оценка:</b> 🟡 средние риски
- *   <b>Тип договора:</b> Договор оказания услуг
+ *   📋 <b>Тип договора:</b> услуг
+ *   👤 <b>Защищаем:</b> Исполнитель
+ *   🎯 <b>Оценка:</b> 🔴 опасный — <i>...</i>
  *
- *   🔴 <b>Возврат денег при задержке более 5 дней</b>
- *   Подробное описание риска…
+ *   ⚠️ <b>Что не так</b>
  *
- *   🟡 <b>Срок оплаты 30 дней</b>
- *   Описание спорного пункта…
+ *   🔴 <b>Заголовок риска</b> · раздел "..."
+ *   Текст описания...
  *
- * Парсим в три блока: meta (рейтинг + тип), risks (массив с уровнем),
- * footer (всё что после рисков — обычно рекомендации).
+ *   🔴 <b>Следующий риск</b>
+ *   Описание...
+ *
+ *   💡 <b>Итого:</b> ...
+ *
+ * Парсим через split по emoji-маркерам — надёжнее чем regex с lookahead
+ * (на JS unicode emoji в regex character-class неоднозначны).
  */
 
 export type RiskLevel = 'red' | 'yellow' | 'green'
@@ -32,14 +37,18 @@ export interface ParsedReview {
   side: string | null
   risks: ReviewRisk[]
   footer: string
-  /** raw text — для вкладки «Полный текст» если ничего не распарсилось */
+  /** raw text — для вкладки «Полный текст» */
   raw: string
 }
 
+const RED = '🔴'
+const YELLOW = '🟡'
+const GREEN = '🟢'
+
 const LEVEL_BY_EMOJI: Record<string, RiskLevel> = {
-  '🔴': 'red',
-  '🟡': 'yellow',
-  '🟢': 'green',
+  [RED]: 'red',
+  [YELLOW]: 'yellow',
+  [GREEN]: 'green',
 }
 
 const RATING_LABELS: Record<Rating, { label: string; hint: string }> = {
@@ -50,13 +59,11 @@ const RATING_LABELS: Record<Rating, { label: string; hint: string }> = {
 }
 
 function stripHtml(s: string): string {
-  return s.replace(/<\/?b>/g, '').replace(/<\/?i>/g, '').trim()
+  return s.replace(/<\/?[bi]>/g, '').trim()
 }
 
 export function parseReview(text: string): ParsedReview {
   const raw = text || ''
-
-  // Защитная обёртка — не падать на ошибках regex / неожиданном формате
   try {
     return _parseReviewUnsafe(raw)
   } catch (e) {
@@ -76,34 +83,65 @@ export function parseReview(text: string): ParsedReview {
 }
 
 function _parseReviewUnsafe(raw: string): ParsedReview {
-  // Рейтинг
+  // ─── Рейтинг ─────────────────────────────────────────────────────────
+  // 🎯 <b>Оценка:</b> 🔴 опасный — ...
   let rating: Rating = 'unknown'
-  const m = raw.match(/🎯[^🔴🟡🟢]*?([🔴🟡🟢])/)
-  if (m) rating = LEVEL_BY_EMOJI[m[1]] as Rating
+  const ratingMatch = raw.match(/🎯[^]*?(🔴|🟡|🟢)/)
+  if (ratingMatch) rating = LEVEL_BY_EMOJI[ratingMatch[1]] as Rating
 
-  // Тип договора
+  // ─── Тип договора ───────────────────────────────────────────────────
   const docTypeMatch = raw.match(/<b>Тип договора:<\/b>\s*([^\n<]+)/i)
   const docType = docTypeMatch ? docTypeMatch[1].trim() : null
 
-  // Сторона
+  // ─── Сторона ────────────────────────────────────────────────────────
   const sideMatch = raw.match(/<b>Защищаем:<\/b>\s*([^\n<]+)/i)
   const side = sideMatch ? sideMatch[1].trim() : null
 
-  // Риски — каждый блок начинается с emoji + <b>Заголовок</b>, потом текст до
-  // следующего такого же блока или до конца.
+  // ─── Риски ──────────────────────────────────────────────────────────
+  // Разрезаем текст по строкам начинающимся с 🔴/🟡/🟢 + <b>
+  // Игнорируем строки где после emoji идёт обычный текст (не <b>) —
+  // это упоминания цвета риска внутри текста («🔴 опасные»), не заголовок
+  const lines = raw.split('\n')
   const risks: ReviewRisk[] = []
-  const riskRegex = /([🔴🟡🟢])\s*<b>([^<]+)<\/b>([\s\S]*?)(?=\n\s*[🔴🟡🟢]\s*<b>|$)/g
-  let rm: RegExpExecArray | null
-  let safety = 0
-  while ((rm = riskRegex.exec(raw))) {
-    if (++safety > 100) break  // защита от бесконечного цикла
-    const level = LEVEL_BY_EMOJI[rm[1]]
-    const title = rm[2].trim()
-    const body  = stripHtml(rm[3] || '')
-    if (level && title) {
-      risks.push({ level, title, body })
+  let currentRisk: ReviewRisk | null = null
+  let currentBodyLines: string[] = []
+
+  const flushRisk = () => {
+    if (currentRisk) {
+      currentRisk.body = stripHtml(currentBodyLines.join('\n').trim())
+      risks.push(currentRisk)
+    }
+    currentRisk = null
+    currentBodyLines = []
+  }
+
+  for (const line of lines) {
+    // Проверяем, начинается ли строка с emoji-уровня + <b>заголовок</b>
+    const headerMatch = line.match(/^(🔴|🟡|🟢)\s*<b>([^<]+)<\/b>(.*)$/)
+    if (headerMatch) {
+      // Перед открытием нового риска — закрываем текущий
+      flushRisk()
+      const level = LEVEL_BY_EMOJI[headerMatch[1]]
+      const title = headerMatch[2].trim()
+      const tail  = headerMatch[3].trim()  // например «· раздел "..."»
+      currentRisk = { level, title, body: '' }
+      // Хвост строки заголовка (раздел/цитата) — добавляем как первую строку body
+      if (tail) currentBodyLines.push(tail)
+      continue
+    }
+
+    // Если встретили строку 🎯/💡/⚠️ или просто пустую — закрываем риск
+    if (/^(🎯|💡|⚠️)/.test(line)) {
+      flushRisk()
+      continue
+    }
+
+    // Иначе — это продолжение текущего риска (если он открыт)
+    if (currentRisk) {
+      currentBodyLines.push(line)
     }
   }
+  flushRisk()
 
   const meta = RATING_LABELS[rating]
   return {
