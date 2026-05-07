@@ -98,20 +98,23 @@ export function ProfilePage() {
 
         {me && (
           <>
-            <Card>
-              <CardContent className="pt-5 pb-5">
-                <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-3 font-semibold">
-                  Остаток лимитов
-                </h3>
-                <div className="space-y-2.5">
-                  <Row label="Проверок"   remaining={me.remaining.review}   limit={me.limits.review} />
-                  <Row label="Договоров"  remaining={me.remaining.generate} limit={me.limits.generate} />
-                  {me.limits.explain !== undefined && me.remaining.explain !== null && (
-                    <Row label="Объяснений" remaining={me.remaining.explain} limit={me.limits.explain} />
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold px-1 mb-1">
+              Остаток лимитов
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <QuotaCard
+                label="Проверок"
+                remaining={me.remaining.review}
+                limit={me.limits.review}
+                tone="primary"
+              />
+              <QuotaCard
+                label="Договоров"
+                remaining={me.remaining.generate}
+                limit={me.limits.generate}
+                tone="accent"
+              />
+            </div>
 
             {!me.is_paid && (
               <button
@@ -160,28 +163,45 @@ export function ProfilePage() {
   )
 }
 
-function Row({ label, remaining, limit }: {
+function QuotaCard({
+  label, remaining, limit, tone,
+}: {
   label: string
   remaining: number
   limit: number
+  tone: 'primary' | 'accent'
 }) {
   const ratio = limit > 0 ? remaining / limit : 0
-  const barColor = ratio === 0 ? 'bg-red-500' : ratio < 0.3 ? 'bg-amber-500' : 'bg-emerald-500'
+  const used = limit - remaining
+  // Цвет полоски зависит от остатка
+  const barColor =
+    ratio === 0          ? 'bg-red-500'      :
+    ratio < 0.25         ? 'bg-amber-500'    :
+    tone === 'primary'   ? 'bg-[#1E3A8A]'    : 'bg-[#F97316]'
+  const textColor = tone === 'primary' ? 'text-[#1E3A8A]' : 'text-[#F97316]'
+
   return (
-    <div>
-      <div className="flex justify-between items-baseline mb-1">
-        <span className="text-sm">{label}</span>
-        <span className="text-sm font-mono tabular-nums">
-          <span className="font-bold">{remaining}</span>
-          <span className="text-muted-foreground"> / {limit}</span>
+    <Card className="p-4">
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2 font-semibold">
+        {label}
+      </p>
+      <div className="flex items-baseline gap-1.5 mb-3">
+        <span className={`text-3xl font-extrabold ${textColor} tabular-nums`}>
+          {remaining}
+        </span>
+        <span className="text-base text-muted-foreground tabular-nums">
+          / {limit}
         </span>
       </div>
-      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+      <div className="h-2 bg-muted rounded-full overflow-hidden mb-1.5">
         <div
           className={`h-full transition-all ${barColor}`}
           style={{ width: `${(ratio * 100).toFixed(0)}%` }}
         />
       </div>
-    </div>
+      <p className="text-[11px] text-muted-foreground">
+        Использовано {used} из {limit}
+      </p>
+    </Card>
   )
 }
