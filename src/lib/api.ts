@@ -65,6 +65,18 @@ export interface HistoryResponse {
   items: HistoryItem[]
 }
 
+export interface TemplateField {
+  key: string
+  label: string
+}
+
+export interface Template {
+  id: string
+  name: string
+  desc: string
+  fields: TemplateField[]
+}
+
 // ─── Эндпоинты ─────────────────────────────────────────────────────────
 
 export const api = {
@@ -82,6 +94,37 @@ export const api = {
       method: 'POST',
       body: fd,
     })
+  },
+
+  /** Список шаблонов для конструктора. */
+  templates: () => request<{ templates: Template[] }>('/api/templates'),
+
+  /** Сгенерировать договор по шаблону + полям. */
+  generate: (templateId: string, fields: Record<string, string>) =>
+    request<{ contract_html: string; template_name: string }>('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template_id: templateId, fields }),
+    }),
+
+  /**
+   * Скачать DOCX уже сгенерированного договора.
+   * Запрос идёт мимо обычного request<T>() — нужен blob, не json.
+   */
+  generateDocx: async (contractHtml: string, title: string): Promise<Blob> => {
+    const headers = new Headers({ 'Content-Type': 'application/json' })
+    headers.set('X-Telegram-Init-Data', getInitData())
+    const res = await fetch(`${API_BASE}/api/generate/docx`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ contract_html: contractHtml, title }),
+    })
+    if (!res.ok) {
+      let detail: unknown
+      try { detail = await res.json() } catch {}
+      throw new ApiError(res.status, res.statusText, detail)
+    }
+    return res.blob()
   },
 }
 

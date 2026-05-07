@@ -6,6 +6,7 @@ import { HomePage } from '@/pages/HomePage'
 import { HistoryPage } from '@/pages/HistoryPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { ReviewPage } from '@/pages/ReviewPage'
+import { GeneratePage } from '@/pages/GeneratePage'
 import { PlaceholderPage } from '@/pages/PlaceholderPage'
 import { SubscribePage } from '@/pages/SubscribePage'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -40,13 +41,7 @@ export default function App() {
         <Route path="/profile"  element={<ProfilePage />} />
         <Route path="/review"   element={<ReviewPage />} />
         <Route path="/subscribe" element={<SubscribePage />} />
-        <Route path="/generate" element={
-          <PlaceholderPage
-            title="Создать договор"
-            message="Опишите своими словами что нужно — Claude соберёт DOCX и PDF."
-            botCommand="/generate"
-          />
-        } />
+        <Route path="/generate" element={<GeneratePage />} />
         <Route path="/explain" element={
           <PlaceholderPage
             title="Объяснить пункт"
