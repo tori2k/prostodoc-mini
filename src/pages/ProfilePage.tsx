@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Loader2, Crown, Sparkles, AlertCircle,
 } from 'lucide-react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { api, type MeResponse, ApiError } from '@/lib/api'
+import { haptic } from '@/lib/telegram'
 import { BottomNav } from './HomePage'
 
 const BASE_URL = import.meta.env.BASE_URL
@@ -17,6 +19,7 @@ const PLAN_LABELS: Record<string, string> = {
 }
 
 export function ProfilePage() {
+  const navigate = useNavigate()
   const [me, setMe] = useState<MeResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -111,7 +114,10 @@ export function ProfilePage() {
 
             {!me.is_paid && (
               <button
-                onClick={() => window.Telegram?.WebApp?.close()}
+                onClick={() => {
+                  haptic('medium')
+                  navigate('/subscribe')
+                }}
                 className="w-full text-left rounded-2xl bg-[#F97316] text-white p-5 shadow-lg shadow-orange-500/30 transition-transform active:scale-[0.99] relative overflow-hidden"
               >
                 <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/15 blur-2xl" />

@@ -56,6 +56,26 @@ function stripHtml(s: string): string {
 export function parseReview(text: string): ParsedReview {
   const raw = text || ''
 
+  // Защитная обёртка — не падать на ошибках regex / неожиданном формате
+  try {
+    return _parseReviewUnsafe(raw)
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('parseReview failed:', e)
+    return {
+      rating: 'unknown',
+      ratingLabel: RATING_LABELS.unknown.label,
+      ratingHint:  RATING_LABELS.unknown.hint,
+      docType: null,
+      side: null,
+      risks: [],
+      footer: '',
+      raw,
+    }
+  }
+}
+
+function _parseReviewUnsafe(raw: string): ParsedReview {
   // Рейтинг
   let rating: Rating = 'unknown'
   const m = raw.match(/🎯[^🔴🟡🟢]*?([🔴🟡🟢])/)
@@ -74,7 +94,9 @@ export function parseReview(text: string): ParsedReview {
   const risks: ReviewRisk[] = []
   const riskRegex = /([🔴🟡🟢])\s*<b>([^<]+)<\/b>([\s\S]*?)(?=\n\s*[🔴🟡🟢]\s*<b>|$)/g
   let rm: RegExpExecArray | null
+  let safety = 0
   while ((rm = riskRegex.exec(raw))) {
+    if (++safety > 100) break  // защита от бесконечного цикла
     const level = LEVEL_BY_EMOJI[rm[1]]
     const title = rm[2].trim()
     const body  = stripHtml(rm[3] || '')
@@ -83,9 +105,7 @@ export function parseReview(text: string): ParsedReview {
     }
   }
 
-  // Если рисков не нашли — fallback: показать всё raw текстом
   const meta = RATING_LABELS[rating]
-
   return {
     rating,
     ratingLabel: meta.label,

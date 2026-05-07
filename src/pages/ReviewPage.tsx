@@ -29,19 +29,30 @@ export function ReviewPage() {
     haptic('medium')
     try {
       const r = await api.reviewUpload(file, perspective)
+      if (!r || typeof r.review_html !== 'string') {
+        throw new Error('API вернул некорректный ответ')
+      }
       setResult(r.review_html)
       haptic('heavy')
     } catch (e: unknown) {
-      if (e instanceof ApiError) {
-        if (e.status === 429) {
+      // eslint-disable-next-line no-console
+      console.error('Review upload failed:', e)
+      const err = e as { name?: string; status?: number; message?: string }
+      if (err?.name === 'ApiError' || (e as ApiError) instanceof ApiError) {
+        const status = err.status ?? 0
+        if (status === 429) {
           showAlert('Лимит проверок исчерпан. Загляните в Тарифы.')
-        } else if (e.status === 400) {
-          showAlert('Не получилось прочитать файл — возможно, скан без текстового слоя.')
+        } else if (status === 400) {
+          showAlert('Не получилось прочитать файл — возможно, скан без текстового слоя или пустой файл.')
+        } else if (status === 401) {
+          showAlert('Откройте мини-приложение из бота заново — авторизация устарела.')
+        } else if (status === 503) {
+          showAlert('AI временно недоступен. Попробуйте через минуту.')
         } else {
-          showAlert(`Ошибка ${e.status}: ${e.message}`)
+          showAlert(`Ошибка ${status}: ${err.message ?? 'неизвестная'}`)
         }
       } else {
-        showAlert('Сеть недоступна. Попробуйте через минуту.')
+        showAlert(`Сеть недоступна или ошибка: ${err?.message ?? String(e)}`)
       }
     } finally {
       setLoading(false)
