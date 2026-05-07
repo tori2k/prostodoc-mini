@@ -2,10 +2,12 @@ import { useMemo, useState } from 'react'
 import {
   ArrowLeft, Home, Share2, Mail, Download,
   ChevronDown, AlertTriangle, CheckCircle2, Info,
+  X, Copy, Check, Loader2,
 } from 'lucide-react'
 
 import { parseReview, type RiskLevel } from '@/lib/parseReview'
-import { haptic } from '@/lib/telegram'
+import { api } from '@/lib/api'
+import { haptic, showAlert } from '@/lib/telegram'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -60,13 +62,96 @@ const LEVEL_META: Record<RiskLevel, {
 interface ReviewResultProps {
   text: string
   fileName: string
+  reviewId: string | null
   onBack: () => void
   onHome: () => void
 }
 
-export function ReviewResult({ text, fileName, onBack, onHome }: ReviewResultProps) {
+export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: ReviewResultProps) {
   const parsed = useMemo(() => parseReview(text), [text])
   const [showRaw, setShowRaw] = useState(false)
+
+  const [letterText, setLetterText] = useState<string | null>(null)
+  const [letterLoading, setLetterLoading] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState(false)
+
+  const requireReviewId = (): string | null => {
+    if (!reviewId) {
+      showAlert('Срок хранения проверки истёк, прогоните договор заново')
+      return null
+    }
+    return reviewId
+  }
+
+  const onLetter = async () => {
+    const rid = requireReviewId()
+    if (!rid) return
+    haptic('medium')
+    setLetterLoading(true)
+    try {
+      const r = await api.letter(rid)
+      setLetterText(r.letter)
+    } catch (e: unknown) {
+      const err = e as { status?: number; message?: string }
+      if (err?.status === 410) {
+        showAlert('Срок хранения проверки истёк, прогоните договор заново')
+      } else if (err?.status === 503) {
+        showAlert('AI временно недоступен. Попробуйте через минуту.')
+      } else {
+        showAlert(`Ошибка: ${err?.message ?? String(e)}`)
+      }
+    } finally {
+      setLetterLoading(false)
+    }
+  }
+
+  const onPdf = async () => {
+    const rid = requireReviewId()
+    if (!rid) return
+    haptic('medium')
+    setPdfLoading(true)
+    try {
+      const blob = await api.reviewPdf(rid)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${fileName.replace(/\.[^.]+$/, '')}_review.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e: unknown) {
+      const err = e as { status?: number; message?: string }
+      if (err?.status === 410) {
+        showAlert('Срок хранения проверки истёк, прогоните договор заново')
+      } else {
+        showAlert(`Не удалось скачать PDF: ${err?.message ?? String(e)}`)
+      }
+    } finally {
+      setPdfLoading(false)
+    }
+  }
+
+  const onShare = async () => {
+    haptic('light')
+    const summary =
+      `Проверил договор через ProstoDoc — AI-юриста в Telegram.\n` +
+      `Вердикт: ${parsed.ratingLabel}\n` +
+      `Опасных: ${parsed.risks.filter(r => r.level === 'red').length}, ` +
+      `спорных: ${parsed.risks.filter(r => r.level === 'yellow').length}, ` +
+      `нормально: ${parsed.risks.filter(r => r.level === 'green').length}.\n\n` +
+      `t.me/ProstoDocxBot`
+    try {
+      if (navigator.share) {
+        await navigator.share({ text: summary })
+      } else {
+        await navigator.clipboard.writeText(summary)
+        showAlert('Скопировано в буфер обмена')
+      }
+    } catch {
+      // юзер закрыл share-меню — это ок, ничего не делаем
+    }
+  }
 
   const counts = useMemo(() => {
     const c = { red: 0, yellow: 0, green: 0 }
@@ -197,33 +282,26 @@ export function ReviewResult({ text, fileName, onBack, onHome }: ReviewResultPro
           Что дальше
         </h3>
         <ActionRow
-          icon={<Mail className="w-5 h-5" />}
+          icon={letterLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mail className="w-5 h-5" />}
           title="Письмо контрагенту"
-          desc="Готовый текст со списком правок"
-          onClick={() => {
-            haptic('light')
-            window.Telegram?.WebApp?.close()
-          }}
+          desc={letterLoading ? 'AI пишет письмо…' : 'Готовый текст со списком правок'}
+          onClick={onLetter}
+          disabled={letterLoading}
           accent="orange"
         />
         <ActionRow
-          icon={<Download className="w-5 h-5" />}
+          icon={pdfLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
           title="PDF-отчёт"
-          desc="Скачать полный отчёт на телефон"
-          onClick={() => {
-            haptic('light')
-            window.Telegram?.WebApp?.close()
-          }}
+          desc={pdfLoading ? 'Готовлю файл…' : 'Скачать полный отчёт на телефон'}
+          onClick={onPdf}
+          disabled={pdfLoading}
           accent="blue"
         />
         <ActionRow
           icon={<Share2 className="w-5 h-5" />}
           title="Поделиться вердиктом"
-          desc="Картинка для друзей или соцсетей"
-          onClick={() => {
-            haptic('light')
-            window.Telegram?.WebApp?.close()
-          }}
+          desc="Скопировать или отправить ссылку на бота"
+          onClick={onShare}
           accent="green"
         />
       </section>
@@ -232,6 +310,86 @@ export function ReviewResult({ text, fileName, onBack, onHome }: ReviewResultPro
       <p className="text-center text-[11px] text-muted-foreground mt-8 px-5">
         Проверено · {fileName}
       </p>
+
+      {letterText && (
+        <LetterModal
+          text={letterText}
+          onClose={() => setLetterText(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function LetterModal({ text, onClose }: { text: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false)
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      haptic('heavy')
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      showAlert('Не удалось скопировать. Выделите текст вручную.')
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-card w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[90dvh] flex flex-col"
+      >
+        <header className="px-5 py-4 flex items-center justify-between border-b border-border">
+          <div className="flex items-center gap-2">
+            <Mail className="w-5 h-5 text-orange-500" />
+            <h3 className="text-base font-bold">Письмо контрагенту</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 -mr-1.5 rounded-lg hover:bg-muted"
+            aria-label="Закрыть"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="doc-surface rounded-xl border border-border p-4">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              {text}
+            </p>
+          </div>
+        </div>
+
+        <footer className="px-5 py-4 border-t border-border">
+          <button
+            onClick={onCopy}
+            className={`
+              w-full h-12 rounded-2xl font-bold text-sm flex items-center justify-center gap-2
+              transition-all active:scale-[0.99]
+              ${copied
+                ? 'bg-emerald-500 text-white'
+                : 'bg-[#F97316] text-white shadow-lg shadow-orange-500/30'}
+            `}
+          >
+            {copied ? (
+              <>
+                <Check className="w-4 h-4" />
+                Скопировано
+              </>
+            ) : (
+              <>
+                <Copy className="w-4 h-4" />
+                Скопировать в буфер
+              </>
+            )}
+          </button>
+        </footer>
+      </div>
     </div>
   )
 }
@@ -298,12 +456,13 @@ function RiskCard({ risk }: { risk: { level: RiskLevel; title: string; body: str
   )
 }
 
-function ActionRow({ icon, title, desc, onClick, accent }: {
+function ActionRow({ icon, title, desc, onClick, accent, disabled }: {
   icon: React.ReactNode
   title: string
   desc: string
   onClick: () => void
   accent: 'orange' | 'blue' | 'green'
+  disabled?: boolean
 }) {
   const accents = {
     orange: 'text-orange-600 bg-orange-50',
@@ -313,7 +472,8 @@ function ActionRow({ icon, title, desc, onClick, accent }: {
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors active:scale-[0.99]"
+      disabled={disabled}
+      className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
     >
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${accents[accent]}`}>
         {icon}

@@ -7,7 +7,7 @@ import { HistoryPage } from '@/pages/HistoryPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { ReviewPage } from '@/pages/ReviewPage'
 import { GeneratePage } from '@/pages/GeneratePage'
-import { PlaceholderPage } from '@/pages/PlaceholderPage'
+import { ExplainPage } from '@/pages/ExplainPage'
 import { SubscribePage } from '@/pages/SubscribePage'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ready, expandViewport } from '@/lib/telegram'
@@ -42,13 +42,7 @@ export default function App() {
         <Route path="/review"   element={<ReviewPage />} />
         <Route path="/subscribe" element={<SubscribePage />} />
         <Route path="/generate" element={<GeneratePage />} />
-        <Route path="/explain" element={
-          <PlaceholderPage
-            title="Объяснить пункт"
-            message="Скопируйте один пункт договора — объясню что он значит."
-            botCommand="/explain"
-          />
-        } />
+        <Route path="/explain"  element={<ExplainPage />} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </HashRouter>

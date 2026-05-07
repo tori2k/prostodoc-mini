@@ -22,6 +22,7 @@ export function ReviewPage() {
   const [perspective, setPerspective] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<string | null>(null)
+  const [reviewId, setReviewId] = useState<string | null>(null)
 
   const handleSubmit = async () => {
     if (!file || !perspective) return
@@ -33,6 +34,7 @@ export function ReviewPage() {
         throw new Error('API вернул некорректный ответ')
       }
       setResult(r.review_html)
+      setReviewId(r.review_id ?? null)
       haptic('heavy')
     } catch (e: unknown) {
       // eslint-disable-next-line no-console
@@ -64,8 +66,10 @@ export function ReviewPage() {
       <ReviewResult
         text={result}
         fileName={file?.name ?? 'Договор'}
+        reviewId={reviewId}
         onBack={() => {
           setResult(null)
+          setReviewId(null)
           setFile(null)
           setPerspective('')
         }}

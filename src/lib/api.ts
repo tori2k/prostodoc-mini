@@ -90,10 +90,42 @@ export const api = {
     const fd = new FormData()
     fd.append('file', file)
     fd.append('perspective', perspective)
-    return request<{ review_html: string }>('/api/review', {
+    return request<{ review_html: string; review_id: string }>('/api/review', {
       method: 'POST',
       body: fd,
     })
+  },
+
+  /** Сгенерировать письмо контрагенту по review_id. */
+  letter: (reviewId: string) =>
+    request<{ letter: string }>('/api/letter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ review_id: reviewId }),
+    }),
+
+  /** Объяснить произвольный пункт договора. */
+  explain: (clause: string) =>
+    request<{ explanation: string }>('/api/explain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clause }),
+    }),
+
+  /** Скачать PDF-отчёт по review_id. */
+  reviewPdf: async (reviewId: string): Promise<Blob> => {
+    const headers = new Headers()
+    headers.set('X-Telegram-Init-Data', getInitData())
+    const res = await fetch(
+      `${API_BASE}/api/review/pdf?review_id=${encodeURIComponent(reviewId)}`,
+      { headers },
+    )
+    if (!res.ok) {
+      let detail: unknown
+      try { detail = await res.json() } catch {}
+      throw new ApiError(res.status, res.statusText, detail)
+    }
+    return res.blob()
   },
 
   /** Список шаблонов для конструктора. */
