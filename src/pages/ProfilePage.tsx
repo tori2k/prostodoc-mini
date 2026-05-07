@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Crown, Sparkles, AlertCircle, Compass, FileStack, Gift, Copy, Check,
-  MessageCircle, Trash2,
+  MessageCircle, Trash2, Bell, BellOff,
 } from 'lucide-react'
 
 import { DarkScreen } from '@/components/DarkScreen'
 import { api, type MeResponse, type ReferralInfo, ApiError } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
 import { track, EVT } from '@/lib/analytics'
+import { humanError } from '@/lib/errors'
 import { BottomNav } from './HomePage'
 import { SEEN_KEY } from './WelcomePage'
 
@@ -209,6 +210,8 @@ export function ProfilePage() {
               </div>
             </button>
 
+            <NotificationsToggle me={me} onToggle={(v) => setMe({ ...me, notifications_enabled: v })} />
+
             <h3 className="text-xs uppercase tracking-wider text-white/35 font-semibold px-1 mt-5 mb-1">
               Управление данными
             </h3>
@@ -373,6 +376,62 @@ function RefStat({ label, value }: { label: string; value: number }) {
       <p className="text-2xl font-extrabold text-white tabular-nums">{value}</p>
       <p className="text-[10px] text-white/55 leading-tight">{label}</p>
     </div>
+  )
+}
+
+function NotificationsToggle({
+  me, onToggle,
+}: {
+  me: MeResponse
+  onToggle: (enabled: boolean) => void
+}) {
+  const enabled = me.notifications_enabled !== false
+  const [busy, setBusy] = useState(false)
+
+  const click = async () => {
+    if (busy) return
+    haptic('light')
+    setBusy(true)
+    try {
+      const r = await api.notificationsToggle(!enabled)
+      onToggle(r.enabled)
+    } catch (e: unknown) {
+      showAlert(humanError(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <button
+      onClick={click}
+      disabled={busy}
+      className="w-full flex items-center gap-3 p-3 rounded-xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] transition-colors active:scale-[0.99] disabled:opacity-60"
+    >
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border ${
+        enabled
+          ? 'bg-violet-500/15 border-violet-500/25 text-violet-300'
+          : 'bg-white/[0.04] border-white/[0.1] text-white/45'
+      }`}>
+        {enabled ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
+      </div>
+      <div className="flex-1 text-left">
+        <p className="text-sm font-semibold">Уведомления от бота</p>
+        <p className="text-xs text-white/45">
+          {enabled ? 'Готовый вердикт + советы' : 'Выключены — присылать не буду'}
+        </p>
+      </div>
+      {/* Стилизованный switch */}
+      <div className={`relative w-11 h-6 rounded-full transition-colors ${
+        enabled ? 'bg-violet-500/50' : 'bg-white/10'
+      }`}>
+        <div
+          className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+            enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
+          }`}
+        />
+      </div>
+    </button>
   )
 }
 

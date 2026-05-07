@@ -6,8 +6,9 @@ import {
 } from 'lucide-react'
 
 import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
-import { api, ApiError } from '@/lib/api'
+import { api } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
+import { humanError } from '@/lib/errors'
 import { cn } from '@/lib/utils'
 
 const CONFIRM_WORD = 'УДАЛИТЬ'
@@ -32,15 +33,7 @@ export function DeleteAccountPage() {
         feedback: r.deleted.feedback,
       })
     } catch (e: unknown) {
-      const err = e as { status?: number; message?: string; detail?: { message?: string } }
-      const msg = err?.detail?.message ?? err?.message ?? String(e)
-      if (err?.status === 400) {
-        showAlert(msg)
-      } else if ((e as ApiError) instanceof ApiError) {
-        showAlert(`Ошибка ${err?.status}: ${msg}`)
-      } else {
-        showAlert(`Сеть недоступна: ${msg}`)
-      }
+      showAlert(humanError(e, 'delete'))
     } finally {
       setDeleting(false)
     }

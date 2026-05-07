@@ -6,8 +6,9 @@ import {
 } from 'lucide-react'
 
 import { ProgressStepper, EXPLAIN_STEPS } from '@/components/ProgressStepper'
-import { api, ApiError } from '@/lib/api'
+import { api } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
+import { humanError } from '@/lib/errors'
 import { track, EVT } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
@@ -52,20 +53,7 @@ export function ExplainPage() {
       setExplanation(r.explanation)
       haptic('heavy')
     } catch (e: unknown) {
-      const err = e as { status?: number; message?: string }
-      if ((e as ApiError) instanceof ApiError) {
-        if (err?.status === 503) {
-          showAlert('AI временно недоступен. Попробуйте через минуту.')
-        } else if (err?.status === 400) {
-          showAlert('Слишком длинный пункт — урежьте до 8 000 символов.')
-        } else if (err?.status === 401) {
-          showAlert('Откройте мини-приложение из бота заново.')
-        } else {
-          showAlert(`Ошибка ${err?.status}: ${err?.message ?? 'неизвестная'}`)
-        }
-      } else {
-        showAlert(`Сеть недоступна: ${err?.message ?? String(e)}`)
-      }
+      showAlert(humanError(e, 'explain'))
     } finally {
       setLoading(false)
     }

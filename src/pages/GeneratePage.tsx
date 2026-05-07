@@ -10,6 +10,7 @@ import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
 import { ProgressStepper, GENERATE_STEPS } from '@/components/ProgressStepper'
 import { api, ApiError, type Template } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
+import { humanError } from '@/lib/errors'
 import { track, EVT } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
@@ -75,19 +76,7 @@ export function GeneratePage() {
       setStep('result')
       haptic('heavy')
     } catch (e: unknown) {
-      const err = e as { name?: string; status?: number; message?: string; detail?: { message?: string } }
-      const detailMsg = err?.detail?.message
-      if (err?.status === 429) {
-        showAlert('Лимит договоров исчерпан. Загляните в Тарифы.')
-      } else if (err?.status === 401) {
-        showAlert('Откройте мини-приложение из бота заново.')
-      } else if (err?.status === 503) {
-        showAlert('AI временно недоступен. Попробуйте через минуту.')
-      } else if (err?.status === 400 && detailMsg) {
-        showAlert(detailMsg)
-      } else {
-        showAlert(`Ошибка ${err?.status ?? '?'}: ${err?.message ?? String(e)}`)
-      }
+      showAlert(humanError(e, 'generate'))
     } finally {
       setGenerating(false)
     }
@@ -106,8 +95,7 @@ export function GeneratePage() {
       haptic('heavy')
       showAlert('DOCX готового договора прислал в чат бота 📎')
     } catch (e: unknown) {
-      const err = e as { message?: string }
-      showAlert(`Не удалось отправить DOCX: ${err?.message ?? String(e)}`)
+      showAlert(humanError(e, 'docx'))
     } finally {
       setDownloading(false)
     }

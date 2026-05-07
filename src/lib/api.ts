@@ -54,6 +54,8 @@ export interface MeResponse {
   remaining: { review: number; generate: number; explain: number | null }
   // Реферальные бонусы сверх лимита плана. По умолчанию 0/0.
   bonus?: { review: number; generate: number }
+  // Включены ли push-уведомления от бота (рассылки + AI-finished).
+  notifications_enabled?: boolean
 }
 
 export interface ReferralInfo {
@@ -191,6 +193,14 @@ export const api = {
 
   /** Реферальная статистика и ссылка для шаринга. */
   referral: () => request<ReferralInfo>('/api/referral'),
+
+  /** Включить/выключить push-уведомления (рассылки и AI-finished пуши). */
+  notificationsToggle: (enabled: boolean) =>
+    request<{ ok: true; enabled: boolean }>('/api/notifications/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    }),
 
   /** Отправить обратную связь админу. */
   feedback: (text: string) =>

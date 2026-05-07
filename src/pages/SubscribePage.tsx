@@ -7,6 +7,7 @@ import { motion } from 'framer-motion'
 import { DarkScreen } from '@/components/DarkScreen'
 import { api, type MeResponse, ApiError } from '@/lib/api'
 import { haptic, showAlert, openInvoice } from '@/lib/telegram'
+import { humanError } from '@/lib/errors'
 import { track, EVT } from '@/lib/analytics'
 
 const BASE_URL = import.meta.env.BASE_URL
@@ -134,12 +135,7 @@ export function SubscribePage() {
         showAlert('Не удалось завершить оплату. Попробуйте ещё раз.')
       }
     } catch (e: unknown) {
-      const err = e as { status?: number; message?: string }
-      if (err?.status === 503) {
-        showAlert('Платежи временно недоступны. Попробуйте через минуту.')
-      } else {
-        showAlert(`Ошибка: ${err?.message ?? String(e)}`)
-      }
+      showAlert(humanError(e, 'subscribe'))
     } finally {
       setBuyingPlan(null)
     }

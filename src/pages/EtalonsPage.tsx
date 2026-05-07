@@ -8,8 +8,9 @@ import {
 import { motion } from 'framer-motion'
 
 import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
-import { api, ApiError, type Etalon } from '@/lib/api'
+import { api, type Etalon } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
+import { humanError } from '@/lib/errors'
 import { track, EVT } from '@/lib/analytics'
 
 export function EtalonsPage() {
@@ -68,17 +69,7 @@ export function EtalonsPage() {
       track(EVT.etalon_uploaded)
       haptic('heavy')
     } catch (e: unknown) {
-      const err = e as { status?: number; message?: string; detail?: { message?: string } }
-      const msg = err?.detail?.message ?? err?.message ?? 'Ошибка загрузки'
-      if (err?.status === 403) {
-        showAlert('Эталоны доступны на тарифах Pro и Юрист')
-      } else if (err?.status === 400) {
-        showAlert(msg)
-      } else if (err?.status === 401) {
-        showAlert('Откройте мини-приложение из бота заново')
-      } else {
-        showAlert(`Ошибка: ${msg}`)
-      }
+      showAlert(humanError(e, 'etalon'))
     } finally {
       setUploading(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -93,8 +84,7 @@ export function EtalonsPage() {
       setItems(r.items)
       track(EVT.etalon_removed)
     } catch (e: unknown) {
-      const err = e as ApiError
-      showAlert(`Не удалось удалить: ${err.message}`)
+      showAlert(humanError(e, 'etalon'))
     } finally {
       setRemoving(null)
     }

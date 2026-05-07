@@ -13,6 +13,7 @@ import { parseReview, type RiskLevel } from '@/lib/parseReview'
 import { api } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
 import { track, EVT } from '@/lib/analytics'
+import { humanError } from '@/lib/errors'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -120,14 +121,7 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
     } catch (e: unknown) {
       // Если упало — закрываем модалку, сообщение уже покажет showAlert
       setLetterText(null)
-      const err = e as { status?: number; message?: string }
-      if (err?.status === 410) {
-        showAlert('Срок хранения проверки истёк, прогоните договор заново')
-      } else if (err?.status === 503) {
-        showAlert('AI временно недоступен. Попробуйте через минуту.')
-      } else {
-        showAlert(`Ошибка: ${err?.message ?? String(e)}`)
-      }
+      showAlert(humanError(e, 'letter'))
     } finally {
       setLetterLoading(false)
     }
@@ -147,12 +141,7 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
       haptic('heavy')
       showAlert('PDF-отчёт прислал в чат бота 📎')
     } catch (e: unknown) {
-      const err = e as { status?: number; message?: string }
-      if (err?.status === 410) {
-        showAlert('Срок хранения проверки истёк, прогоните договор заново')
-      } else {
-        showAlert(`Не удалось отправить PDF: ${err?.message ?? String(e)}`)
-      }
+      showAlert(humanError(e, 'pdf'))
     } finally {
       setPdfLoading(false)
     }

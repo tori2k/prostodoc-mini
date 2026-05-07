@@ -7,8 +7,9 @@ import {
 
 import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
 import { ProgressStepper, REVIEW_STEPS } from '@/components/ProgressStepper'
-import { api, ApiError } from '@/lib/api'
+import { api } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
+import { humanError } from '@/lib/errors'
 import { ReviewResult } from '@/components/ReviewResult'
 import { track, EVT } from '@/lib/analytics'
 
@@ -49,23 +50,7 @@ export function ReviewPage() {
       track(EVT.review_failed)
       // eslint-disable-next-line no-console
       console.error('Review upload failed:', e)
-      const err = e as { name?: string; status?: number; message?: string }
-      if (err?.name === 'ApiError' || (e as ApiError) instanceof ApiError) {
-        const status = err.status ?? 0
-        if (status === 429) {
-          showAlert('Лимит проверок исчерпан. Загляните в Тарифы.')
-        } else if (status === 400) {
-          showAlert('Не получилось прочитать файл — возможно, скан без текстового слоя или пустой файл.')
-        } else if (status === 401) {
-          showAlert('Откройте мини-приложение из бота заново — авторизация устарела.')
-        } else if (status === 503) {
-          showAlert('AI временно недоступен. Попробуйте через минуту.')
-        } else {
-          showAlert(`Ошибка ${status}: ${err.message ?? 'неизвестная'}`)
-        }
-      } else {
-        showAlert(`Сеть недоступна или ошибка: ${err?.message ?? String(e)}`)
-      }
+      showAlert(humanError(e, 'review'))
     } finally {
       setLoading(false)
     }
