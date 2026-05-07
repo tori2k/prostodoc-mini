@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 
 import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
+import { ProgressStepper, GENERATE_STEPS } from '@/components/ProgressStepper'
 import { api, ApiError, type Template } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
 import { track, EVT } from '@/lib/analytics'
@@ -158,15 +159,18 @@ export function GeneratePage() {
         />
       )}
 
-      {step === 'form' && tpl && (
+      {step === 'form' && tpl && !generating && (
         <FormView
           tpl={tpl}
           fields={fields}
           onChange={(k, v) => setFields((p) => ({ ...p, [k]: v }))}
           allFilled={allFilled}
-          generating={generating}
           onSubmit={submit}
         />
+      )}
+
+      {step === 'form' && tpl && generating && (
+        <GenerateLoadingOverlay tplName={tpl.name} />
       )}
 
       {step === 'result' && tpl && (
@@ -293,13 +297,12 @@ function ListView({
 // ─── Форма ────────────────────────────────────────────────────────────────
 
 function FormView({
-  tpl, fields, onChange, allFilled, generating, onSubmit,
+  tpl, fields, onChange, allFilled, onSubmit,
 }: {
   tpl: Template
   fields: Record<string, string>
   onChange: (k: string, v: string) => void
   allFilled: boolean
-  generating: boolean
   onSubmit: () => void
 }) {
   const isCustom = tpl.id === 'custom'
@@ -349,28 +352,45 @@ function FormView({
 
       <button
         onClick={onSubmit}
-        disabled={!allFilled || generating}
+        disabled={!allFilled}
         className={cn(
           'w-full h-14 rounded-2xl font-bold text-base transition-all',
-          allFilled && !generating
+          allFilled
             ? 'bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white shadow-2xl shadow-orange-500/30 active:scale-[0.99]'
             : 'bg-white/[0.05] text-white/40',
         )}
       >
-        {generating ? (
-          <span className="inline-flex items-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            AI собирает договор…
-          </span>
-        ) : (
-          'Сгенерировать договор'
-        )}
+        Сгенерировать договор
       </button>
 
       <p className="text-center text-[11px] text-white/40">
         Обычно занимает 20-40 секунд
       </p>
     </motion.div>
+  )
+}
+
+function GenerateLoadingOverlay({ tplName }: { tplName: string }) {
+  return (
+    <div className="px-5 pt-12 pb-8 max-w-md mx-auto">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <p className="text-xs uppercase tracking-wider text-white/55 mb-1.5">
+          Создаю договор
+        </p>
+        <h2 className="text-2xl font-bold leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/55 mb-1">
+          {tplName}
+        </h2>
+        <p className="text-sm text-white/45 mb-7">
+          Обычно занимает 20–40 секунд. Можно свернуть мини-приложение —
+          DOCX придёт в чат бота.
+        </p>
+        <ProgressStepper steps={GENERATE_STEPS} done={false} />
+      </motion.div>
+    </div>
   )
 }
 

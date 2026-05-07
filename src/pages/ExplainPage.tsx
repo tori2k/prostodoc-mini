@@ -5,6 +5,7 @@ import {
   ArrowLeft, BookOpen, Sparkles, RotateCcw, Home, SendIcon,
 } from 'lucide-react'
 
+import { ProgressStepper, EXPLAIN_STEPS } from '@/components/ProgressStepper'
 import { api, ApiError } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
 import { track, EVT } from '@/lib/analytics'
@@ -120,7 +121,9 @@ export function ExplainPage() {
         </button>
       </header>
 
-      {!explanation ? (
+      {loading ? (
+        <ExplainLoadingOverlay />
+      ) : !explanation ? (
         <FormView
           clause={clause}
           setClause={setClause}
@@ -338,6 +341,29 @@ function TypingDots() {
           }}
         />
       ))}
+    </div>
+  )
+}
+
+function ExplainLoadingOverlay() {
+  return (
+    <div className="relative z-10 px-5 pt-12 pb-6 max-w-2xl mx-auto">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 mb-3">
+          <BookOpen className="w-6 h-6 text-emerald-400" />
+        </div>
+        <h2 className="text-2xl font-medium tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/55 mb-1.5">
+          AI разбирает пункт
+        </h2>
+        <p className="text-sm text-white/45 mb-7">
+          Это пара секунд — простыми словами объясню что значит и есть ли подвох.
+        </p>
+        <ProgressStepper steps={EXPLAIN_STEPS} done={false} />
+      </motion.div>
     </div>
   )
 }

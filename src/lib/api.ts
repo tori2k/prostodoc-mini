@@ -102,14 +102,50 @@ export const api = {
   history: (limit = 20) =>
     request<HistoryResponse>(`/api/history?limit=${limit}`),
 
-  /** Загрузить договор для AI-проверки. */
-  reviewUpload: (file: File, perspective: string) => {
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('perspective', perspective)
-    return request<{ review_html: string; review_id: string }>('/api/review', {
-      method: 'POST',
-      body: fd,
+  /** Загрузить договор для AI-проверки.
+   *  onUploadProgress — колбэк 0..1 на прогресс upload-фазы. Используется
+   *  чтобы показать реальную полоску загрузки файла; фаза AI-обработки
+   *  идёт уже после 100% и контролируется отдельным шаговым stepper'ом.
+   */
+  reviewUpload: (
+    file: File,
+    perspective: string,
+    onUploadProgress?: (ratio: number) => void,
+  ) => {
+    return new Promise<{ review_html: string; review_id: string }>((resolve, reject) => {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('perspective', perspective)
+
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', `${API_BASE}/api/review`)
+      xhr.setRequestHeader('X-Telegram-Init-Data', getInitData())
+
+      if (onUploadProgress) {
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            onUploadProgress(e.loaded / e.total)
+          }
+        })
+        // upload завершился — 100%, дальше серверная обработка
+        xhr.upload.addEventListener('load', () => onUploadProgress(1))
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText))
+          } catch (e) {
+            reject(new ApiError(xhr.status, 'Invalid JSON'))
+          }
+        } else {
+          let detail: unknown
+          try { detail = JSON.parse(xhr.responseText) } catch {}
+          reject(new ApiError(xhr.status, xhr.statusText, detail))
+        }
+      }
+      xhr.onerror = () => reject(new ApiError(0, 'Network error'))
+      xhr.send(fd)
     })
   },
 

@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  ArrowLeft, Upload, AlertCircle, FileText, Home,
+  ArrowLeft, Upload, AlertCircle, FileText, Home, Check,
 } from 'lucide-react'
 
 import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
+import { ProgressStepper, REVIEW_STEPS } from '@/components/ProgressStepper'
 import { api, ApiError } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
 import { ReviewResult } from '@/components/ReviewResult'
@@ -23,16 +24,20 @@ export function ReviewPage() {
   const [file, setFile] = useState<File | null>(null)
   const [perspective, setPerspective] = useState<string>('')
   const [loading, setLoading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)  // 0..1
   const [result, setResult] = useState<string | null>(null)
   const [reviewId, setReviewId] = useState<string | null>(null)
 
   const handleSubmit = async () => {
     if (!file || !perspective) return
     setLoading(true)
+    setUploadProgress(0)
     haptic('medium')
     track(EVT.review_submitted, { perspective, file_size_kb: Math.round(file.size / 1024) })
     try {
-      const r = await api.reviewUpload(file, perspective)
+      const r = await api.reviewUpload(file, perspective, (ratio) => {
+        setUploadProgress(ratio)
+      })
       if (!r || typeof r.review_html !== 'string') {
         throw new Error('API вернул некорректный ответ')
       }
@@ -80,6 +85,17 @@ export function ReviewPage() {
         }}
         onHome={() => navigate('/home')}
       />
+    )
+  }
+
+  if (loading) {
+    return (
+      <DarkScreen noBottomPad>
+        <ReviewLoadingOverlay
+          fileName={file?.name ?? 'Договор'}
+          uploadProgress={uploadProgress}
+        />
+      </DarkScreen>
     )
   }
 
@@ -150,7 +166,7 @@ export function ReviewPage() {
 
         <button
           onClick={handleSubmit}
-          disabled={!file || !perspective || loading}
+          disabled={!file || !perspective}
           className="
             w-full h-14 rounded-2xl bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white font-bold
             shadow-2xl shadow-orange-500/30
@@ -159,13 +175,7 @@ export function ReviewPage() {
             flex items-center justify-center gap-2
           "
         >
-          {loading ? (
-            <span className="inline-flex items-center gap-2">
-              Анализирую <TypingDots />
-            </span>
-          ) : (
-            <>⚡ Найти риски</>
-          )}
+          ⚡ Найти риски
         </button>
 
         <p className="text-[11px] text-white/45 text-center mt-3 flex items-center justify-center gap-1.5">
@@ -213,10 +223,34 @@ function FileDropZone({
   file: File | null
   onSelect: (f: File) => void
 }) {
+  // Скан-эффект — играем 1.5 секунды после выбора файла, потом галочка.
+  // file?.name в deps чтобы триггерилось на каждый новый файл (replace тоже).
+  const [scanning, setScanning] = useState(false)
+  useEffect(() => {
+    if (!file) return
+    setScanning(true)
+    const t = setTimeout(() => setScanning(false), 1500)
+    return () => clearTimeout(t)
+  }, [file?.name, file?.size])
+
   if (file) {
     return (
-      <div className="rounded-2xl border border-[#F97316]/40 bg-gradient-to-br from-[#F97316]/10 to-orange-500/5 backdrop-blur-xl p-5">
-        <div className="flex items-center gap-3 mb-3">
+      <div className="relative overflow-hidden rounded-2xl border border-[#F97316]/40 bg-gradient-to-br from-[#F97316]/10 to-orange-500/5 backdrop-blur-xl p-5">
+        {/* Скан-линия — синий градиент пробегает сверху вниз */}
+        {scanning && (
+          <motion.div
+            className="absolute inset-x-0 h-16 pointer-events-none"
+            style={{
+              background: 'linear-gradient(180deg, transparent 0%, rgba(96,165,250,0.35) 50%, transparent 100%)',
+              boxShadow: '0 0 20px rgba(96,165,250,0.45)',
+            }}
+            initial={{ y: '-100%' }}
+            animate={{ y: '600%' }}
+            transition={{ duration: 1.4, ease: 'easeInOut' }}
+          />
+        )}
+
+        <div className="relative flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#F97316] to-[#EA580C] flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
             <FileText className="w-5 h-5" />
           </div>
@@ -226,11 +260,21 @@ function FileDropZone({
               {(file.size / 1024 / 1024).toFixed(2)} МБ
             </p>
           </div>
+          {!scanning && (
+            <motion.div
+              initial={{ scale: 0, rotate: -45 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 16 }}
+              className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center"
+            >
+              <Check className="w-4 h-4 text-emerald-300" />
+            </motion.div>
+          )}
         </div>
         <button
           onClick={() => document.getElementById('contract-file')?.click()}
           type="button"
-          className="w-full h-9 rounded-lg backdrop-blur-xl bg-white/[0.05] border border-white/[0.1] text-sm font-medium hover:bg-white/[0.08] transition-colors"
+          className="relative w-full h-9 rounded-lg backdrop-blur-xl bg-white/[0.05] border border-white/[0.1] text-sm font-medium hover:bg-white/[0.08] transition-colors"
         >
           Заменить файл
         </button>
@@ -277,23 +321,61 @@ function FileDropZone({
   )
 }
 
-function TypingDots() {
+/**
+ * Полноэкранный экран «AI работает». Две фазы:
+ *  1) upload — пока файл льётся на сервер (real-time прогресс XHR)
+ *  2) AI — после 100% upload показываем шаговый stepper с этапами анализа.
+ *
+ * Шаги — иллюзия: бэк не отдаёт промежуточные сигналы, мы просто
+ * крутим их по таймеру (REVIEW_STEPS, ~36 секунд). Это создаёт ощущение
+ * прогресса вместо безликого спиннера.
+ */
+function ReviewLoadingOverlay({
+  fileName, uploadProgress,
+}: {
+  fileName: string
+  uploadProgress: number
+}) {
+  const uploaded = uploadProgress >= 1
   return (
-    <span className="inline-flex items-center gap-0.5">
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="w-1.5 h-1.5 bg-current rounded-full"
-          initial={{ opacity: 0.3 }}
-          animate={{ opacity: [0.3, 1, 0.3], scale: [0.85, 1.1, 0.85] }}
-          transition={{
-            duration: 1.2,
-            repeat: Infinity,
-            delay: i * 0.15,
-            ease: 'easeInOut',
-          }}
-        />
-      ))}
-    </span>
+    <div className="px-5 pt-12 pb-8 max-w-md mx-auto">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <p className="text-xs uppercase tracking-wider text-white/55 mb-1.5">
+          {uploaded ? 'AI анализирует' : 'Загружаю файл'}
+        </p>
+        <h2 className="text-2xl font-bold leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/55 mb-1">
+          {fileName}
+        </h2>
+        <p className="text-sm text-white/45 mb-7">
+          Обычно занимает 30–60 секунд. Можно свернуть мини-приложение —
+          результат придёт сюда же.
+        </p>
+
+        {!uploaded && (
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-2 text-xs">
+              <span className="text-white/55">Загрузка</span>
+              <span className="text-white/75 tabular-nums font-semibold">
+                {Math.round(uploadProgress * 100)}%
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-[#F97316] to-[#FBBF24]"
+                initial={{ width: 0 }}
+                animate={{ width: `${uploadProgress * 100}%` }}
+                transition={{ duration: 0.2 }}
+              />
+            </div>
+          </div>
+        )}
+
+        <ProgressStepper steps={REVIEW_STEPS} done={false} />
+      </motion.div>
+    </div>
   )
 }

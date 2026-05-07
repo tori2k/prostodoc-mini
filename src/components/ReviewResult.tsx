@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
+import confetti from 'canvas-confetti'
 import {
   ArrowLeft, Home, Share2, Mail, Send,
   ChevronDown, AlertTriangle, CheckCircle2, Info,
@@ -7,6 +8,7 @@ import {
 } from 'lucide-react'
 
 import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
+import { ProgressStepper, LETTER_STEPS } from '@/components/ProgressStepper'
 import { parseReview, type RiskLevel } from '@/lib/parseReview'
 import { api } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
@@ -74,6 +76,23 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
   const parsed = useMemo(() => parseReview(text), [text])
   const [showRaw, setShowRaw] = useState(false)
 
+  // Эмоциональная реакция на вердикт.
+  // 🟢 — конфетти-вспышка, 🔴 — shake на hero (см. атрибут animate ниже).
+  // Срабатывает один раз при монтировании результата.
+  useEffect(() => {
+    if (parsed.rating === 'green') {
+      // Эмеральдово-золотая палитра под наш бренд
+      confetti({
+        particleCount: 90,
+        spread: 75,
+        startVelocity: 38,
+        origin: { y: 0.55 },
+        colors: ['#10b981', '#34d399', '#fbbf24', '#f97316', '#ffffff'],
+        scalar: 0.9,
+      })
+    }
+  }, [parsed.rating])
+
   const [letterText, setLetterText] = useState<string | null>(null)
   const [letterLoading, setLetterLoading] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
@@ -91,11 +110,16 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
     if (!rid) return
     haptic('medium')
     track(EVT.letter_clicked)
+    // Открываем модалку сразу — внутри ProgressStepper крутится, пока
+    // приходит текст. Ощущение «AI прямо сейчас пишет», без ожидания.
     setLetterLoading(true)
+    setLetterText('')
     try {
       const r = await api.letter(rid)
       setLetterText(r.letter)
     } catch (e: unknown) {
+      // Если упало — закрываем модалку, сообщение уже покажет showAlert
+      setLetterText(null)
       const err = e as { status?: number; message?: string }
       if (err?.status === 410) {
         showAlert('Срок хранения проверки истёк, прогоните договор заново')
@@ -181,11 +205,21 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
         </button>
       </GlassHeader>
 
-      {/* HERO — рейтинг (фикс яркий цвет, белый текст — узнаваемо и читаемо) */}
+      {/* HERO — рейтинг (фикс яркий цвет, белый текст — узнаваемо и читаемо).
+          Для 🔴 hero коротко shake'ает — приковывает внимание к серьёзности
+          вердикта. Конфетти на 🟢 — выше в useEffect. */}
       <motion.section
         initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        animate={
+          parsed.rating === 'red'
+            ? { opacity: 1, y: 0, x: [0, -6, 6, -4, 4, -2, 2, 0] }
+            : { opacity: 1, y: 0 }
+        }
+        transition={
+          parsed.rating === 'red'
+            ? { opacity: { duration: 0.4 }, y: { duration: 0.4 }, x: { duration: 0.5, delay: 0.2 } }
+            : { duration: 0.4 }
+        }
         className={`relative overflow-hidden bg-gradient-to-br ${RATING_BG[parsed.rating]} text-white px-5 pt-6 pb-6 mx-3 mt-3 rounded-3xl shadow-2xl`}
       >
         <div className="absolute -top-20 -right-16 w-56 h-56 rounded-full bg-white/15 blur-3xl" />
@@ -312,17 +346,30 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
         Проверено · {fileName}
       </p>
 
-      {letterText && (
+      {/* letterText !== null — модалка открыта.
+       *  '' = AI пишет (показываем stepper)
+       *  непустая строка = готовое письмо */}
+      {letterText !== null && (
         <LetterModal
           text={letterText}
-          onClose={() => setLetterText(null)}
+          loading={letterLoading}
+          onClose={() => {
+            setLetterText(null)
+            setLetterLoading(false)
+          }}
         />
       )}
     </DarkScreen>
   )
 }
 
-function LetterModal({ text, onClose }: { text: string; onClose: () => void }) {
+function LetterModal({
+  text, loading, onClose,
+}: {
+  text: string
+  loading: boolean
+  onClose: () => void
+}) {
   const [copied, setCopied] = useState(false)
 
   const onCopy = async () => {
@@ -374,40 +421,50 @@ function LetterModal({ text, onClose }: { text: string; onClose: () => void }) {
         </header>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {/* Письмо рендерим как HTML — AI присылает с тегами <b>/<i>/<blockquote>.
-              Лист бумаги для читаемости. */}
-          <div className="doc-surface rounded-xl border border-white/15 p-4 shadow-2xl">
-            <div
-              className="text-sm leading-relaxed [&>blockquote]:border-l-4 [&>blockquote]:border-orange-400 [&>blockquote]:pl-3 [&>blockquote]:my-3 [&>blockquote]:text-slate-700"
-              dangerouslySetInnerHTML={{ __html: text.replace(/\n/g, '<br />') }}
-            />
-          </div>
+          {loading ? (
+            <div className="py-4">
+              <p className="text-xs uppercase tracking-wider text-white/55 mb-3">
+                AI пишет письмо…
+              </p>
+              <ProgressStepper steps={LETTER_STEPS} done={false} />
+            </div>
+          ) : (
+            // Письмо как HTML — AI присылает <b>/<i>/<blockquote>. На листе.
+            <div className="doc-surface rounded-xl border border-white/15 p-4 shadow-2xl">
+              <div
+                className="text-sm leading-relaxed [&>blockquote]:border-l-4 [&>blockquote]:border-orange-400 [&>blockquote]:pl-3 [&>blockquote]:my-3 [&>blockquote]:text-slate-700"
+                dangerouslySetInnerHTML={{ __html: text.replace(/\n/g, '<br />') }}
+              />
+            </div>
+          )}
         </div>
 
-        <footer className="px-5 py-4 border-t border-white/10">
-          <button
-            onClick={onCopy}
-            className={`
-              w-full h-12 rounded-2xl font-bold text-sm flex items-center justify-center gap-2
-              transition-all active:scale-[0.99]
-              ${copied
-                ? 'bg-emerald-500 text-white'
-                : 'bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white shadow-2xl shadow-orange-500/30'}
-            `}
-          >
-            {copied ? (
-              <>
-                <Check className="w-4 h-4" />
-                Скопировано
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4" />
-                Скопировать без разметки
-              </>
-            )}
-          </button>
-        </footer>
+        {!loading && (
+          <footer className="px-5 py-4 border-t border-white/10">
+            <button
+              onClick={onCopy}
+              className={`
+                w-full h-12 rounded-2xl font-bold text-sm flex items-center justify-center gap-2
+                transition-all active:scale-[0.99]
+                ${copied
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white shadow-2xl shadow-orange-500/30'}
+              `}
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Скопировано
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  Скопировать без разметки
+                </>
+              )}
+            </button>
+          </footer>
+        )}
       </motion.div>
     </div>
   )
