@@ -171,13 +171,17 @@ function QuotaCard({
   limit: number
   tone: 'primary' | 'accent'
 }) {
-  const ratio = limit > 0 ? remaining / limit : 0
-  const used = limit - remaining
-  // Цвет полоски зависит от остатка
+  const used = Math.max(0, limit - remaining)
+  const usedRatio = limit > 0 ? used / limit : 0
+  const isExhausted = remaining === 0
+
+  // Полоса показывает израсходованную часть. Цвет — бренд-акцент,
+  // в крайних случаях красный/жёлтый
   const barColor =
-    ratio === 0          ? 'bg-red-500'      :
-    ratio < 0.25         ? 'bg-amber-500'    :
-    tone === 'primary'   ? 'bg-[#1E3A8A]'    : 'bg-[#F97316]'
+    isExhausted        ? 'bg-red-500'   :
+    remaining / Math.max(1, limit) < 0.15 ? 'bg-amber-500' :
+    tone === 'primary' ? 'bg-[#1E3A8A]' : 'bg-[#F97316]'
+
   const textColor = tone === 'primary' ? 'text-[#1E3A8A]' : 'text-[#F97316]'
 
   return (
@@ -193,14 +197,15 @@ function QuotaCard({
           / {limit}
         </span>
       </div>
+      {/* Прогресс-бар показывает что уже потрачено */}
       <div className="h-2 bg-muted rounded-full overflow-hidden mb-1.5">
         <div
           className={`h-full transition-all ${barColor}`}
-          style={{ width: `${(ratio * 100).toFixed(0)}%` }}
+          style={{ width: `${(usedRatio * 100).toFixed(1)}%` }}
         />
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Использовано {used} из {limit}
+        Потрачено {used} из {limit}
       </p>
     </Card>
   )
