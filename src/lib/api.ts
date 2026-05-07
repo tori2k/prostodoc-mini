@@ -128,6 +128,14 @@ export const api = {
     return res.blob()
   },
 
+  /** Создать invoice link для оплаты тарифа звёздами. */
+  subscribeInvoice: (plan: 'basic' | 'pro' | 'lawyer') =>
+    request<{ url: string; plan: string; stars: number }>('/api/subscribe/invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
+    }),
+
   /** Список шаблонов для конструктора. */
   templates: () => request<{ templates: Template[] }>('/api/templates'),
 

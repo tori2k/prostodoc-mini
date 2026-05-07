@@ -57,6 +57,10 @@ interface TelegramWebApp {
   }
   showAlert: (msg: string) => void
   showConfirm: (msg: string, cb: (ok: boolean) => void) => void
+  openInvoice: (
+    url: string,
+    cb?: (status: 'paid' | 'cancelled' | 'failed' | 'pending') => void,
+  ) => void
 }
 
 declare global {
@@ -112,4 +116,21 @@ export function expandViewport() {
 export function ready() {
   const tg = getTelegramWebApp()
   tg?.ready()
+}
+
+/**
+ * Открывает Telegram-окно оплаты по invoice link.
+ * Резолвится со статусом, который пришёл от телеги:
+ * 'paid' | 'cancelled' | 'failed' | 'pending'.
+ * Если мы вне TG — резолвится в 'failed'.
+ */
+export function openInvoice(url: string): Promise<'paid' | 'cancelled' | 'failed' | 'pending'> {
+  return new Promise((resolve) => {
+    const tg = getTelegramWebApp()
+    if (!tg?.openInvoice) {
+      resolve('failed')
+      return
+    }
+    tg.openInvoice(url, (status) => resolve(status))
+  })
 }

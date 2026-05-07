@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, Crown, Loader2, Sparkles } from 'lucide-react'
+import { ArrowLeft, Check, Crown, Loader2, Sparkles, Star } from 'lucide-react'
 
 import { Card } from '@/components/ui/card'
 import { api, type MeResponse, ApiError } from '@/lib/api'
-import { haptic, showAlert } from '@/lib/telegram'
+import { haptic, showAlert, openInvoice } from '@/lib/telegram'
 
 const BASE_URL = import.meta.env.BASE_URL
 
+type PaidPlan = 'basic' | 'pro' | 'lawyer'
+
 interface Plan {
-  id: 'free' | 'basic' | 'pro' | 'lawyer'
+  id: 'free' | PaidPlan
   name: string
   price: number
   priceLabel: string
+  stars?: number
   desc: string
   perks: string[]
   highlight?: boolean
@@ -37,6 +40,7 @@ const PLANS: Plan[] = [
     name: 'Базовый',
     price: 390,
     priceLabel: '390 ₽',
+    stars: 250,
     desc: 'Для самозанятых и фрилансеров',
     perks: [
       '10 проверок в месяц',
@@ -50,6 +54,7 @@ const PLANS: Plan[] = [
     name: 'Pro',
     price: 990,
     priceLabel: '990 ₽',
+    stars: 600,
     desc: 'Для малого бизнеса и ИП',
     perks: [
       '80 проверок в месяц',
@@ -66,6 +71,7 @@ const PLANS: Plan[] = [
     name: 'Юрист',
     price: 3900,
     priceLabel: '3900 ₽',
+    stars: 2500,
     desc: 'Для практикующих юристов',
     perks: [
       '400 проверок в месяц',
@@ -81,6 +87,11 @@ export function SubscribePage() {
   const navigate = useNavigate()
   const [me, setMe] = useState<MeResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [buyingPlan, setBuyingPlan] = useState<PaidPlan | null>(null)
+
+  const refreshMe = () => {
+    api.me().then(setMe).catch(() => {})
+  }
 
   useEffect(() => {
     api.me()
@@ -93,13 +104,38 @@ export function SubscribePage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const handlePick = (plan: Plan) => {
+  const handlePick = async (plan: Plan) => {
     haptic('medium')
-    if (plan.id === 'free') return
-    // Реальная оплата ещё не подключена — отправляем юзера в бот
-    showAlert(
-      'Оплата подключается. Для подписки сейчас напишите боту /subscribe или /feedback с темой «подписка».',
-    )
+    if (plan.id === 'free' || buyingPlan) return
+
+    setBuyingPlan(plan.id)
+    try {
+      const inv = await api.subscribeInvoice(plan.id)
+      const status = await openInvoice(inv.url)
+      if (status === 'paid') {
+        haptic('heavy')
+        // Telegram уже показал свой success-экран. Дёргаем /me чтобы
+        // подхватить новый тариф (бот успел проставить is_paid в БД
+        // через handler successful_payment).
+        refreshMe()
+        showAlert(`${plan.name} активирован 🎉 Лимиты обновлены.`)
+      } else if (status === 'cancelled') {
+        // Юзер закрыл sheet — без алерта, не раздражаем
+      } else if (status === 'pending') {
+        showAlert('Платёж в обработке. Тариф активируется автоматически.')
+      } else {
+        showAlert('Не удалось завершить оплату. Попробуйте ещё раз.')
+      }
+    } catch (e: unknown) {
+      const err = e as { status?: number; message?: string }
+      if (err?.status === 503) {
+        showAlert('Платежи временно недоступны. Попробуйте через минуту.')
+      } else {
+        showAlert(`Ошибка: ${err?.message ?? String(e)}`)
+      }
+    } finally {
+      setBuyingPlan(null)
+    }
   }
 
   if (loading) {
@@ -155,13 +191,15 @@ export function SubscribePage() {
             key={p.id}
             plan={p}
             current={me?.plan === p.id}
+            buying={buyingPlan === p.id}
             onPick={() => handlePick(p)}
           />
         ))}
 
-        <p className="text-center text-xs text-muted-foreground pt-4 px-4">
-          Оплата по карте подключается. Сейчас для подписки —
-          напишите /subscribe в боте или /feedback с темой «подписка».
+        <p className="text-center text-xs text-muted-foreground pt-4 px-4 leading-relaxed">
+          Оплата через Telegram Stars (⭐). Подписка возобновляется
+          автоматически каждый месяц. Отменить можно в настройках Telegram
+          → Платежи и подписки.
         </p>
       </section>
     </div>
@@ -169,10 +207,11 @@ export function SubscribePage() {
 }
 
 function PlanCard({
-  plan, current, onPick,
+  plan, current, buying, onPick,
 }: {
   plan: Plan
   current: boolean
+  buying: boolean
   onPick: () => void
 }) {
   const isHighlight = plan.highlight
@@ -218,14 +257,28 @@ function PlanCard({
       {!current && plan.id !== 'free' && (
         <button
           onClick={onPick}
+          disabled={buying}
           className={`
             w-full h-11 rounded-xl font-semibold transition-all active:scale-[0.98]
+            inline-flex items-center justify-center gap-1.5
+            disabled:opacity-70
             ${isHighlight
               ? 'bg-[#F97316] text-white shadow-md shadow-orange-500/30'
               : 'bg-[#1E3A8A] text-white'}
           `}
         >
-          Выбрать
+          {buying ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Открываю оплату…
+            </>
+          ) : plan.stars ? (
+            <>
+              <Star className="w-4 h-4 fill-current" />
+              {plan.stars}
+              <span className="font-normal opacity-90 ml-0.5">/ месяц</span>
+            </>
+          ) : 'Выбрать'}
         </button>
       )}
     </Card>
