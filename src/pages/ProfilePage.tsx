@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Loader2, Crown, Sparkles, AlertCircle,
+  Loader2, Crown, Sparkles, AlertCircle, Compass,
 } from 'lucide-react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { api, type MeResponse, ApiError } from '@/lib/api'
 import { haptic } from '@/lib/telegram'
 import { BottomNav } from './HomePage'
+import { SEEN_KEY } from './WelcomePage'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -132,6 +133,24 @@ export function ProfilePage() {
                 </div>
               </button>
             )}
+
+            {/* Перепосмотреть онбординг */}
+            <button
+              onClick={() => {
+                haptic('light')
+                localStorage.removeItem(SEEN_KEY)
+                navigate('/welcome')
+              }}
+              className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors active:scale-[0.99]"
+            >
+              <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <Compass className="w-5 h-5" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold">Как работает ProstoDoc</p>
+                <p className="text-xs text-muted-foreground">Посмотреть онбординг ещё раз</p>
+              </div>
+            </button>
           </>
         )}
       </div>
