@@ -110,6 +110,13 @@ export function ReviewPage() {
           <FileDropZone
             file={file}
             onSelect={(f) => {
+              // Лимит 20 МБ совпадает с бэком (handlers/main.py 910/2318
+              // и логика юзеров «1 файл = 1 договор»). Отлавливаем заранее
+              // на фронте чтобы не гонять большой XHR на сервер впустую.
+              if (f.size > 20 * 1024 * 1024) {
+                showAlert('Файл больше 20 МБ. Сократите или сожмите PDF.')
+                return
+              }
               setFile(f)
               haptic('light')
               track(EVT.review_file_picked, {

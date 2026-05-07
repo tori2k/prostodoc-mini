@@ -1,20 +1,25 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 
 import { WelcomePage, SEEN_KEY } from '@/pages/WelcomePage'
 import { HomePage } from '@/pages/HomePage'
-import { HistoryPage } from '@/pages/HistoryPage'
-import { ProfilePage } from '@/pages/ProfilePage'
-import { ReviewPage } from '@/pages/ReviewPage'
-import { GeneratePage } from '@/pages/GeneratePage'
-import { ExplainPage } from '@/pages/ExplainPage'
-import { EtalonsPage } from '@/pages/EtalonsPage'
-import { SubscribePage } from '@/pages/SubscribePage'
-import { FeedbackPage } from '@/pages/FeedbackPage'
-import { DeleteAccountPage } from '@/pages/DeleteAccountPage'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { DarkScreen } from '@/components/DarkScreen'
 import { ready, expandViewport, isInTelegram } from '@/lib/telegram'
 import { initYM, hit, track, EVT } from '@/lib/analytics'
+
+// Code-split: вторичные экраны грузятся при первой навигации, не на main bundle.
+// HomePage и WelcomePage — eager: всегда на старте, лениво грузить нет смысла.
+// Остальные 9 экранов — отдельные chunks, загружаются по тапу.
+const HistoryPage       = lazy(() => import('@/pages/HistoryPage').then(m => ({ default: m.HistoryPage })))
+const ProfilePage       = lazy(() => import('@/pages/ProfilePage').then(m => ({ default: m.ProfilePage })))
+const ReviewPage        = lazy(() => import('@/pages/ReviewPage').then(m => ({ default: m.ReviewPage })))
+const GeneratePage      = lazy(() => import('@/pages/GeneratePage').then(m => ({ default: m.GeneratePage })))
+const ExplainPage       = lazy(() => import('@/pages/ExplainPage').then(m => ({ default: m.ExplainPage })))
+const EtalonsPage       = lazy(() => import('@/pages/EtalonsPage').then(m => ({ default: m.EtalonsPage })))
+const SubscribePage     = lazy(() => import('@/pages/SubscribePage').then(m => ({ default: m.SubscribePage })))
+const FeedbackPage      = lazy(() => import('@/pages/FeedbackPage').then(m => ({ default: m.FeedbackPage })))
+const DeleteAccountPage = lazy(() => import('@/pages/DeleteAccountPage').then(m => ({ default: m.DeleteAccountPage })))
 
 function Root() {
   // Если юзер уже видел welcome — сразу домой
@@ -64,21 +69,25 @@ export default function App() {
     {import.meta.env.DEV && !isInTelegram() && <DevBanner />}
     <HashRouter>
       <RouteTracker />
-      <Routes>
-        <Route path="/" element={<Root />} />
-        <Route path="/welcome"  element={<WelcomePage />} />
-        <Route path="/home"     element={<HomePage />} />
-        <Route path="/history"  element={<HistoryPage />} />
-        <Route path="/profile"  element={<ProfilePage />} />
-        <Route path="/review"   element={<ReviewPage />} />
-        <Route path="/subscribe" element={<SubscribePage />} />
-        <Route path="/generate" element={<GeneratePage />} />
-        <Route path="/explain"  element={<ExplainPage />} />
-        <Route path="/etalons"  element={<EtalonsPage />} />
-        <Route path="/feedback" element={<FeedbackPage />} />
-        <Route path="/account/delete" element={<DeleteAccountPage />} />
-        <Route path="*" element={<Navigate to="/home" replace />} />
-      </Routes>
+      {/* Suspense — пока chunk загружается (~50-200мс) показываем
+          пустой DarkScreen чтобы не было «белого моргания». */}
+      <Suspense fallback={<DarkScreen noBottomPad><div /></DarkScreen>}>
+        <Routes>
+          <Route path="/" element={<Root />} />
+          <Route path="/welcome"  element={<WelcomePage />} />
+          <Route path="/home"     element={<HomePage />} />
+          <Route path="/history"  element={<HistoryPage />} />
+          <Route path="/profile"  element={<ProfilePage />} />
+          <Route path="/review"   element={<ReviewPage />} />
+          <Route path="/subscribe" element={<SubscribePage />} />
+          <Route path="/generate" element={<GeneratePage />} />
+          <Route path="/explain"  element={<ExplainPage />} />
+          <Route path="/etalons"  element={<EtalonsPage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/account/delete" element={<DeleteAccountPage />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
+        </Routes>
+      </Suspense>
     </HashRouter>
     </ErrorBoundary>
   )

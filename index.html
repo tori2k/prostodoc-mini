@@ -13,6 +13,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
+    <!-- Маскот загружается на 6 экранах подряд (Welcome → Home → Profile →
+         Subscribe → History empty state → ReviewResult). Preload экономит
+         ~150мс на первом экране — браузер начинает грузить картинку
+         параллельно с JS, а не после рендера. -->
+    <link rel="preload" as="image" href="/prostodoc-mini/mascot/raccoon-friendly.png" />
+
     <!-- Telegram WebApp SDK — даёт window.Telegram.WebApp -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 

@@ -11,7 +11,7 @@ import { haptic, showAlert } from '@/lib/telegram'
 import { humanError } from '@/lib/errors'
 import { sanitize } from '@/lib/sanitize'
 import { track, EVT } from '@/lib/analytics'
-import { BottomNav } from './HomePage'
+import { BottomNav } from '@/components/BottomNav'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -259,6 +259,10 @@ function startOfDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
 }
 
+// Intl.RelativeTimeFormat решает русские склонения автоматически:
+// 1 → «1 день назад», 2-4 → «N дня назад», 5-20 → «N дней назад» и т.д.
+const _rtf = new Intl.RelativeTimeFormat('ru-RU', { numeric: 'auto' })
+
 function dayLabel(ts: string): string {
   const d = new Date(ts)
   const today = startOfDay(new Date())
@@ -266,7 +270,10 @@ function dayLabel(ts: string): string {
   const diffDays = Math.round((today - target) / (24 * 60 * 60 * 1000))
   if (diffDays === 0) return 'Сегодня'
   if (diffDays === 1) return 'Вчера'
-  if (diffDays < 7) return `${diffDays} дня назад`
+  if (diffDays < 7) {
+    // RelativeTimeFormat корректно склоняет: «2 дня назад», «5 дней назад»
+    return _rtf.format(-diffDays, 'day')
+  }
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
 }
 

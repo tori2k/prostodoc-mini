@@ -11,7 +11,7 @@ import { api, type MeResponse, type ReferralInfo, ApiError } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
 import { track, EVT } from '@/lib/analytics'
 import { humanError } from '@/lib/errors'
-import { BottomNav } from './HomePage'
+import { BottomNav } from '@/components/BottomNav'
 import { SEEN_KEY } from './WelcomePage'
 
 const BASE_URL = import.meta.env.BASE_URL

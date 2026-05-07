@@ -141,11 +141,11 @@ export function SubscribePage() {
       if (status === 'paid') {
         haptic('heavy')
         track(EVT.subscribe_paid, { plan: plan.id, stars: plan.stars })
-        // Telegram уже показал свой success-экран. Дёргаем /me чтобы
-        // подхватить новый тариф (бот успел проставить is_paid в БД
-        // через handler successful_payment).
+        // Telegram уже показал свой success-экран и пишет «Платёж принят»
+        // в чат бота. Доп. алерт от нас — двойное уведомление,
+        // юзеры жалуются что раздражает. Просто рефрешим /me чтобы UI
+        // обновился (тариф сменится, на карточке появится бейдж «ваш»).
         refreshMe()
-        showAlert(`${plan.name} активирован 🎉 Лимиты обновлены.`)
       } else if (status === 'cancelled') {
         // Юзер закрыл sheet — без алерта, не раздражаем
         track(EVT.subscribe_cancelled, { plan: plan.id })
