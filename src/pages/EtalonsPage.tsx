@@ -10,6 +10,7 @@ import { motion } from 'framer-motion'
 import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
 import { api, ApiError, type Etalon } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
+import { track, EVT } from '@/lib/analytics'
 
 export function EtalonsPage() {
   const navigate = useNavigate()
@@ -45,7 +46,10 @@ export function EtalonsPage() {
     }
   }
 
-  useEffect(() => { refresh() }, [])
+  useEffect(() => {
+    track(EVT.etalons_opened)
+    refresh()
+  }, [])
 
   const onPickFile = () => {
     if (planLocked) {
@@ -61,6 +65,7 @@ export function EtalonsPage() {
     try {
       const r = await api.etalonsAdd(file)
       setItems(r.items)
+      track(EVT.etalon_uploaded)
       haptic('heavy')
     } catch (e: unknown) {
       const err = e as { status?: number; message?: string; detail?: { message?: string } }
@@ -86,6 +91,7 @@ export function EtalonsPage() {
     try {
       const r = await api.etalonsRemove(idx)
       setItems(r.items)
+      track(EVT.etalon_removed)
     } catch (e: unknown) {
       const err = e as ApiError
       showAlert(`Не удалось удалить: ${err.message}`)

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 
 import { WelcomePage, SEEN_KEY } from '@/pages/WelcomePage'
 import { HomePage } from '@/pages/HomePage'
@@ -12,6 +12,7 @@ import { EtalonsPage } from '@/pages/EtalonsPage'
 import { SubscribePage } from '@/pages/SubscribePage'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ready, expandViewport, isInTelegram } from '@/lib/telegram'
+import { initYM, hit, track, EVT } from '@/lib/analytics'
 
 function Root() {
   // Если юзер уже видел welcome — сразу домой
@@ -40,6 +41,16 @@ export default function App() {
     // expand() занимает весь экран чата (без свайпа закрытия).
     ready()
     expandViewport()
+    // Метрика: счётчик инициализируется один раз, событие app_open фиксирует
+    // факт открытия приложения. Pageview-ы за HashRouter — в RouteTracker.
+    initYM()
+    track(EVT.app_open)
+    // Если юзер пришёл по реф-ссылке (Telegram кладёт ref_X в start_param) —
+    // отдельным событием: даст в Метрике источник трафика «по приглашению».
+    const sp = window.Telegram?.WebApp?.initDataUnsafe?.start_param
+    if (sp && typeof sp === 'string' && sp.startsWith('ref_')) {
+      track(EVT.referral_attributed, { ref: sp })
+    }
   }, [])
 
   return (
@@ -50,6 +61,7 @@ export default function App() {
     <ErrorBoundary>
     {import.meta.env.DEV && !isInTelegram() && <DevBanner />}
     <HashRouter>
+      <RouteTracker />
       <Routes>
         <Route path="/" element={<Root />} />
         <Route path="/welcome"  element={<WelcomePage />} />
@@ -66,6 +78,16 @@ export default function App() {
     </HashRouter>
     </ErrorBoundary>
   )
+}
+
+/** Реджистрит pageview каждый раз когда меняется hash-роут — это нужно
+ *  для funnel-аналитики в Метрике (HashRouter не триггерит её сам). */
+function RouteTracker() {
+  const location = useLocation()
+  useEffect(() => {
+    hit(window.location.href)
+  }, [location.pathname])
+  return null
 }
 
 /**

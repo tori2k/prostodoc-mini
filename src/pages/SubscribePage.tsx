@@ -7,6 +7,7 @@ import { motion } from 'framer-motion'
 import { DarkScreen } from '@/components/DarkScreen'
 import { api, type MeResponse, ApiError } from '@/lib/api'
 import { haptic, showAlert, openInvoice } from '@/lib/telegram'
+import { track, EVT } from '@/lib/analytics'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -96,6 +97,7 @@ export function SubscribePage() {
   }
 
   useEffect(() => {
+    track(EVT.subscribe_opened)
     api.me()
       .then(setMe)
       .catch((e: unknown) => {
@@ -111,11 +113,13 @@ export function SubscribePage() {
     if (plan.id === 'free' || buyingPlan) return
 
     setBuyingPlan(plan.id)
+    track(EVT.subscribe_plan_picked, { plan: plan.id, stars: plan.stars })
     try {
       const inv = await api.subscribeInvoice(plan.id)
       const status = await openInvoice(inv.url)
       if (status === 'paid') {
         haptic('heavy')
+        track(EVT.subscribe_paid, { plan: plan.id, stars: plan.stars })
         // Telegram уже показал свой success-экран. Дёргаем /me чтобы
         // подхватить новый тариф (бот успел проставить is_paid в БД
         // через handler successful_payment).
@@ -123,6 +127,7 @@ export function SubscribePage() {
         showAlert(`${plan.name} активирован 🎉 Лимиты обновлены.`)
       } else if (status === 'cancelled') {
         // Юзер закрыл sheet — без алерта, не раздражаем
+        track(EVT.subscribe_cancelled, { plan: plan.id })
       } else if (status === 'pending') {
         showAlert('Платёж в обработке. Тариф активируется автоматически.')
       } else {

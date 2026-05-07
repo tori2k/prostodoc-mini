@@ -9,6 +9,7 @@ import {
 import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
 import { api, ApiError, type Template } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
+import { track, EVT } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
 type Step = 'list' | 'form' | 'result'
@@ -38,6 +39,7 @@ export function GeneratePage() {
   const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
+    track(EVT.generate_opened)
     api.templates()
       .then((r) => setTemplates(r.templates))
       .catch((e: unknown) => {
@@ -51,6 +53,7 @@ export function GeneratePage() {
 
   const pickTemplate = (t: Template) => {
     haptic('light')
+    track(EVT.generate_template_picked, { template_id: t.id })
     setTpl(t)
     setFields({})
     setStep('form')
@@ -64,6 +67,7 @@ export function GeneratePage() {
     if (!tpl || !allFilled) return
     setGenerating(true)
     haptic('medium')
+    track(EVT.generate_submitted, { template_id: tpl.id })
     try {
       const r = await api.generate(tpl.id, fields)
       setContractHtml(r.contract_html)
@@ -92,6 +96,7 @@ export function GeneratePage() {
     if (!tpl || !contractHtml) return
     setDownloading(true)
     haptic('medium')
+    track(EVT.generate_docx_sent, { template_id: tpl.id })
     try {
       const cleanName = tpl.name.replace(/^\W+/, '').trim() || 'contract'
       // На iOS Telegram WebView <a download> не работает, поэтому вместо

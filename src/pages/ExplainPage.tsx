@@ -7,6 +7,7 @@ import {
 
 import { api, ApiError } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
+import { track, EVT } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
 const MAX_LEN = 8000
@@ -19,6 +20,8 @@ export function ExplainPage() {
   const [focused, setFocused] = useState(false)
   const [mouse, setMouse] = useState({ x: 0, y: 0 })
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => { track(EVT.explain_opened) }, [])
 
   // mouse-follow gradient — даёт эффект «живого» света за курсором.
   // Расход на ре-рендер компенсируется тем что рисуем только когда
@@ -42,6 +45,7 @@ export function ExplainPage() {
     if (!trimmed || loading) return
     setLoading(true)
     haptic('medium')
+    track(EVT.explain_submitted, { len: trimmed.length })
     try {
       const r = await api.explain(trimmed)
       setExplanation(r.explanation)

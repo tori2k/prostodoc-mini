@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Upload, Sparkles, AlertTriangle, Mail, ShieldCheck } from 'lucide-react'
 
 import { haptic } from '@/lib/telegram'
+import { track, EVT } from '@/lib/analytics'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -24,9 +26,12 @@ const SEEN_KEY = 'prostodoc:welcomeSeen'
 export function WelcomePage() {
   const navigate = useNavigate()
 
+  useEffect(() => { track(EVT.welcome_seen) }, [])
+
   const goToHome = () => {
     haptic('medium')
     localStorage.setItem(SEEN_KEY, '1')
+    track(EVT.welcome_completed)
     navigate('/home')
   }
 

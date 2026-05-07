@@ -52,6 +52,17 @@ export interface MeResponse {
   limits: { review: number; generate: number; explain?: number }
   // explain сейчас не лимитируется — может прийти null
   remaining: { review: number; generate: number; explain: number | null }
+  // Реферальные бонусы сверх лимита плана. По умолчанию 0/0.
+  bonus?: { review: number; generate: number }
+}
+
+export interface ReferralInfo {
+  link: string
+  invited: number
+  bonus_review: number
+  bonus_generate: number
+  is_partner: boolean
+  reward_per_invite: { review: number; generate: number }
 }
 
 export interface HistoryItem {
@@ -141,6 +152,9 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ review_id: reviewId }),
     }),
+
+  /** Реферальная статистика и ссылка для шаринга. */
+  referral: () => request<ReferralInfo>('/api/referral'),
 
   /** Эталоны (Pro / Lawyer). */
   etalonsList: () => request<{ items: Etalon[]; max: number }>('/api/etalons'),

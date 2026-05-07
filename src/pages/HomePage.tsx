@@ -10,6 +10,7 @@ import { BorderBeam } from '@/components/ui/border-beam'
 import { DarkScreen } from '@/components/DarkScreen'
 import { api, type MeResponse, ApiError } from '@/lib/api'
 import { haptic, getCurrentUser } from '@/lib/telegram'
+import { setUser } from '@/lib/analytics'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -20,7 +21,15 @@ export function HomePage() {
 
   useEffect(() => {
     api.me()
-      .then(setMe)
+      .then((data) => {
+        setMe(data)
+        // Привязываем сессию метрики к Telegram-юзеру + параметры тарифа.
+        // Делаем тут, потому что HomePage всегда грузится после welcome.
+        setUser(data.user_id, {
+          plan: data.plan,
+          is_paid: data.is_paid,
+        })
+      })
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.status === 401) {
           setError('Откройте мини-приложение из бота @ProstoDocxBot')

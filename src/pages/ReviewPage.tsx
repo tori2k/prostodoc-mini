@@ -9,6 +9,7 @@ import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
 import { api, ApiError } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
 import { ReviewResult } from '@/components/ReviewResult'
+import { track, EVT } from '@/lib/analytics'
 
 const PERSPECTIVES = [
   { value: 'Исполнитель',  label: 'Исполнитель',  hint: 'Я выполняю работу' },
@@ -29,6 +30,7 @@ export function ReviewPage() {
     if (!file || !perspective) return
     setLoading(true)
     haptic('medium')
+    track(EVT.review_submitted, { perspective, file_size_kb: Math.round(file.size / 1024) })
     try {
       const r = await api.reviewUpload(file, perspective)
       if (!r || typeof r.review_html !== 'string') {
@@ -36,8 +38,10 @@ export function ReviewPage() {
       }
       setResult(r.review_html)
       setReviewId(r.review_id ?? null)
+      track(EVT.review_result_shown)
       haptic('heavy')
     } catch (e: unknown) {
+      track(EVT.review_failed)
       // eslint-disable-next-line no-console
       console.error('Review upload failed:', e)
       const err = e as { name?: string; status?: number; message?: string }
@@ -107,6 +111,10 @@ export function ReviewPage() {
             onSelect={(f) => {
               setFile(f)
               haptic('light')
+              track(EVT.review_file_picked, {
+                size_kb: Math.round(f.size / 1024),
+                ext: f.name.split('.').pop()?.toLowerCase(),
+              })
             }}
           />
         </Step>
@@ -121,6 +129,7 @@ export function ReviewPage() {
                   onClick={() => {
                     setPerspective(p.value)
                     haptic('light')
+                    track(EVT.review_perspective_picked, { perspective: p.value })
                   }}
                   className={`
                     rounded-xl border p-3 text-left transition-all

@@ -10,6 +10,7 @@ import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
 import { parseReview, type RiskLevel } from '@/lib/parseReview'
 import { api } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
+import { track, EVT } from '@/lib/analytics'
 
 const BASE_URL = import.meta.env.BASE_URL
 
@@ -89,6 +90,7 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
     const rid = requireReviewId()
     if (!rid) return
     haptic('medium')
+    track(EVT.letter_clicked)
     setLetterLoading(true)
     try {
       const r = await api.letter(rid)
@@ -111,6 +113,7 @@ export function ReviewResult({ text, fileName, reviewId, onBack, onHome }: Revie
     const rid = requireReviewId()
     if (!rid) return
     haptic('medium')
+    track(EVT.pdf_clicked)
     setPdfLoading(true)
     try {
       // Используем «прислать в чат» вместо blob-скачивания —
@@ -337,6 +340,7 @@ function LetterModal({ text, onClose }: { text: string; onClose: () => void }) {
       await navigator.clipboard.writeText(plain)
       setCopied(true)
       haptic('heavy')
+      track(EVT.letter_copied)
       setTimeout(() => setCopied(false), 2000)
     } catch {
       showAlert('Не удалось скопировать. Выделите текст вручную.')

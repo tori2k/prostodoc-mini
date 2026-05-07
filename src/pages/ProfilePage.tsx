@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  Crown, Sparkles, AlertCircle, Compass, FileStack,
+  Crown, Sparkles, AlertCircle, Compass, FileStack, Gift, Copy, Check,
 } from 'lucide-react'
 
 import { DarkScreen } from '@/components/DarkScreen'
-import { api, type MeResponse, ApiError } from '@/lib/api'
-import { haptic } from '@/lib/telegram'
+import { api, type MeResponse, type ReferralInfo, ApiError } from '@/lib/api'
+import { haptic, showAlert } from '@/lib/telegram'
+import { track, EVT } from '@/lib/analytics'
 import { BottomNav } from './HomePage'
 import { SEEN_KEY } from './WelcomePage'
 
@@ -23,6 +24,7 @@ const PLAN_LABELS: Record<string, string> = {
 export function ProfilePage() {
   const navigate = useNavigate()
   const [me, setMe] = useState<MeResponse | null>(null)
+  const [ref, setRef] = useState<ReferralInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -35,6 +37,9 @@ export function ProfilePage() {
           setError('Не удалось загрузить профиль. Попробуйте позже.')
         }
       })
+    api.referral()
+      .then(setRef)
+      .catch(() => {})  // если 401 — info уже на /me
   }, [])
 
   return (
@@ -115,6 +120,18 @@ export function ProfilePage() {
 
         {me && (
           <>
+            {/* Бонусные квоты от рефералки — показываем только если реально начислены */}
+            {(me.bonus && (me.bonus.review > 0 || me.bonus.generate > 0)) && (
+              <div className="rounded-xl backdrop-blur-xl bg-emerald-500/10 border border-emerald-400/30 px-4 py-3 flex items-center gap-3">
+                <Gift className="w-5 h-5 text-emerald-300 flex-shrink-0" />
+                <p className="text-xs text-emerald-100">
+                  <span className="font-semibold text-emerald-200">Бонус от рефералки</span> ·{' '}
+                  +{me.bonus.review} проверок и +{me.bonus.generate} договоров сверх плана.
+                  Бонусы не сгорают.
+                </p>
+              </div>
+            )}
+
             {!me.is_paid && (
               <button
                 onClick={() => {
@@ -136,6 +153,9 @@ export function ProfilePage() {
                 </div>
               </button>
             )}
+
+            {/* Реферальная карточка */}
+            {ref && <ReferralCard info={ref} />}
 
             <button
               onClick={() => {
@@ -222,6 +242,100 @@ function QuotaCard({
       <p className="text-[11px] text-white/45">
         Потрачено {used} из {limit}
       </p>
+    </div>
+  )
+}
+
+function ReferralCard({ info }: { info: ReferralInfo }) {
+  const [copied, setCopied] = useState(false)
+
+  const onShare = async () => {
+    haptic('medium')
+    track(EVT.referral_link_copied, { invited: info.invited })
+    const text =
+      `Я пользуюсь @ProstoDocxBot — AI-юристом в Telegram, который проверяет договоры и находит риски за 30 секунд.\n\n` +
+      `По ссылке тебе сразу +${info.reward_per_invite.review} проверка и +${info.reward_per_invite.generate} договор:\n\n` +
+      info.link
+    try {
+      // Сначала пробуем нативный share — на мобиле красивее
+      if (navigator.share) {
+        await navigator.share({ text })
+      } else {
+        await navigator.clipboard.writeText(text)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2200)
+      }
+    } catch {
+      // Fallback на копирование если share не сработал
+      try {
+        await navigator.clipboard.writeText(text)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2200)
+      } catch {
+        showAlert('Не удалось скопировать. Ссылка: ' + info.link)
+      }
+    }
+  }
+
+  return (
+    <div className="rounded-2xl p-5 relative overflow-hidden bg-gradient-to-br from-violet-600/20 via-fuchsia-500/15 to-orange-500/15 border border-violet-400/25 backdrop-blur-xl">
+      <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-violet-500/20 blur-2xl pointer-events-none" />
+      <div className="absolute -left-8 -bottom-8 w-32 h-32 rounded-full bg-orange-500/15 blur-2xl pointer-events-none" />
+      <div className="relative">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Gift className="w-5 h-5 text-violet-300" />
+          <h3 className="text-base font-bold">Пригласи друга</h3>
+          {info.is_partner && (
+            <span className="text-[9px] font-bold uppercase tracking-wider bg-yellow-400/20 text-yellow-200 border border-yellow-400/40 rounded-full px-1.5 py-0.5 ml-auto">
+              партнёр
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-white/75 mb-4 leading-snug">
+          За каждого друга — <b className="text-white">+{info.reward_per_invite.review} проверка
+          и +{info.reward_per_invite.generate} договор</b>.
+          Друг получит то же самое сразу при первом открытии.
+        </p>
+
+        {/* Статистика */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <RefStat label="Привёл" value={info.invited} />
+          <RefStat label="Бонусных проверок" value={info.bonus_review} />
+          <RefStat label="Бонусных договоров" value={info.bonus_generate} />
+        </div>
+
+        <button
+          onClick={onShare}
+          className={`
+            w-full h-11 rounded-xl font-semibold text-sm
+            flex items-center justify-center gap-2 transition-all active:scale-[0.99]
+            ${copied
+              ? 'bg-emerald-500 text-white'
+              : 'bg-white/10 hover:bg-white/15 text-white border border-white/15 backdrop-blur-xl'}
+          `}
+        >
+          {copied ? (
+            <>
+              <Check className="w-4 h-4" />
+              Скопировано
+            </>
+          ) : (
+            <>
+              <Copy className="w-4 h-4" />
+              Поделиться ссылкой
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function RefStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg bg-white/[0.05] border border-white/[0.08] px-2 py-2 text-center">
+      <p className="text-2xl font-extrabold text-white tabular-nums">{value}</p>
+      <p className="text-[10px] text-white/55 leading-tight">{label}</p>
     </div>
   )
 }
