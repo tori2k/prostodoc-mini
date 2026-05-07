@@ -12,7 +12,7 @@ import { track, EVT } from '@/lib/analytics'
 
 const BASE_URL = import.meta.env.BASE_URL
 
-type PaidPlan = 'starter' | 'basic' | 'pro'
+type PaidPlan = 'starter' | 'basic' | 'pro' | 'lawyer'
 
 interface Plan {
   id: 'free' | PaidPlan
@@ -26,8 +26,12 @@ interface Plan {
   badge?: string
 }
 
-// 4 тарифа в воронке. Lawyer убран — вернём когда будут юристы-клиенты.
-// Stars-цены: ~1.45 ₽ за Star (Telegram конвертирует автоматически).
+// Цены в звёздах = РОВНО пакеты Telegram Stars (100/250/500/2500).
+// Это значит юзер платит точную сумму без переплат за «лишние» звёзды:
+//   Старт   100⭐ = 209 ₽
+//   Базовый 250⭐ = 529 ₽
+//   Pro     500⭐ = 1060 ₽
+//   Юрист   2500⭐ = 5300 ₽
 const PLANS: Plan[] = [
   {
     id: 'free',
@@ -44,9 +48,9 @@ const PLANS: Plan[] = [
   {
     id: 'starter',
     name: 'Старт',
-    price: 249,
-    priceLabel: '249 ₽',
-    stars: 175,
+    price: 209,
+    priceLabel: '209 ₽',
+    stars: 100,
     desc: 'Для разовых проверок',
     perks: [
       '5 проверок договоров в месяц',
@@ -58,9 +62,9 @@ const PLANS: Plan[] = [
   {
     id: 'basic',
     name: 'Базовый',
-    price: 590,
-    priceLabel: '590 ₽',
-    stars: 410,
+    price: 529,
+    priceLabel: '529 ₽',
+    stars: 250,
     desc: 'Для самозанятых и фрилансеров',
     perks: [
       '20 проверок договоров в месяц',
@@ -72,9 +76,9 @@ const PLANS: Plan[] = [
   {
     id: 'pro',
     name: 'Pro',
-    price: 1290,
-    priceLabel: '1290 ₽',
-    stars: 900,
+    price: 1060,
+    priceLabel: '1060 ₽',
+    stars: 500,
     desc: 'Для малого бизнеса и ИП',
     perks: [
       '80 проверок договоров в месяц',
@@ -85,6 +89,21 @@ const PLANS: Plan[] = [
     ],
     highlight: true,
     badge: 'Популярный',
+  },
+  {
+    id: 'lawyer',
+    name: 'Юрист',
+    price: 5300,
+    priceLabel: '5300 ₽',
+    stars: 2500,
+    desc: 'Для юристов и юр-отделов',
+    perks: [
+      '400 проверок договоров в месяц',
+      '150 готовых договоров в месяц',
+      'История без ограничений',
+      'Эталоны без лимита',
+      'Прямой доступ к разработчику',
+    ],
   },
 ]
 

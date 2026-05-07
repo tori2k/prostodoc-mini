@@ -241,7 +241,7 @@ export const api = {
     }),
 
   /** Создать invoice link для оплаты тарифа звёздами. */
-  subscribeInvoice: (plan: 'starter' | 'basic' | 'pro') =>
+  subscribeInvoice: (plan: 'starter' | 'basic' | 'pro' | 'lawyer') =>
     request<{ url: string; plan: string; stars: number }>('/api/subscribe/invoice', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

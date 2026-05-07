@@ -154,7 +154,7 @@ export function ProfilePage() {
                     <h3 className="text-base font-bold">Снять лимиты</h3>
                   </div>
                   <p className="text-sm text-white/85">
-                    От 249 ₽/мес. Подписка добавляет проверки, договоры, историю и эталоны.
+                    От 209 ₽/мес. Подписка добавляет проверки, договоры, историю и эталоны.
                   </p>
                 </div>
               </button>
