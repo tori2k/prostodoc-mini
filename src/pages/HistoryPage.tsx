@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
   FileSearch, FilePen, BookOpen, Sparkles,
 } from 'lucide-react'
 
+import { DarkScreen } from '@/components/DarkScreen'
 import { api, type HistoryItem } from '@/lib/api'
 import { haptic } from '@/lib/telegram'
 import { BottomNav } from './HomePage'
@@ -16,9 +18,9 @@ const ACTION_META: Record<HistoryItem['action'], {
   bg: string
   color: string
 }> = {
-  review:   { icon: FileSearch, label: 'Проверка',   bg: 'bg-blue-50',    color: 'text-blue-600' },
-  generate: { icon: FilePen,    label: 'Создание',   bg: 'bg-orange-50',  color: 'text-orange-600' },
-  explain:  { icon: BookOpen,   label: 'Объяснение', bg: 'bg-emerald-50', color: 'text-emerald-600' },
+  review:   { icon: FileSearch, label: 'Проверка',   bg: 'bg-blue-500/15 border-blue-500/25',       color: 'text-blue-300' },
+  generate: { icon: FilePen,    label: 'Создание',   bg: 'bg-orange-500/15 border-orange-500/25',   color: 'text-orange-300' },
+  explain:  { icon: BookOpen,   label: 'Объяснение', bg: 'bg-emerald-500/15 border-emerald-500/25', color: 'text-emerald-300' },
 }
 
 export function HistoryPage() {
@@ -36,24 +38,23 @@ export function HistoryPage() {
   const grouped = items ? groupByDay(items) : []
 
   return (
-    <div className="min-h-dvh bg-muted/40 pb-24">
-      {/* HERO */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#1E3A8A] via-[#1E3A8A] to-[#3B5FAE] text-white px-5 pt-10 pb-12 rounded-b-[2rem]">
-        <div className="pointer-events-none absolute inset-0 opacity-20">
-          <div className="absolute -top-24 -left-24 w-64 h-64 rounded-full bg-orange-500/40 blur-3xl" />
-        </div>
-        <div className="relative">
-          <p className="text-xs uppercase tracking-wider text-white/70 mb-1">История</p>
-          <h1 className="text-2xl font-extrabold leading-tight mb-1">
-            Все ваши действия
-          </h1>
-          <p className="text-sm text-white/75">
-            Проверки, созданные договоры, объяснения
-          </p>
-        </div>
-      </section>
+    <DarkScreen>
+      <motion.section
+        className="px-5 pt-10 pb-6"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <p className="text-xs uppercase tracking-wider text-white/55 mb-1">История</p>
+        <h1 className="text-2xl font-bold leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/55">
+          Все ваши действия
+        </h1>
+        <p className="text-sm text-white/45 mt-1.5">
+          Проверки, созданные договоры, объяснения
+        </p>
+      </motion.section>
 
-      <div className="px-5 -mt-6 relative z-10">
+      <div className="px-5">
         {loading ? (
           <div className="space-y-2">
             <RowSkeleton />
@@ -70,7 +71,7 @@ export function HistoryPage() {
           <div className="space-y-5">
             {grouped.map(([day, group]) => (
               <section key={day}>
-                <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold px-1 mb-2">
+                <h3 className="text-xs uppercase tracking-wider text-white/45 font-semibold px-1 mb-2">
                   {day}
                 </h3>
                 <div className="space-y-2">
@@ -85,7 +86,7 @@ export function HistoryPage() {
       </div>
 
       <BottomNav active="history" />
-    </div>
+    </DarkScreen>
   )
 }
 
@@ -93,24 +94,24 @@ function HistoryRow({ item }: { item: HistoryItem }) {
   const meta = ACTION_META[item.action] ?? ACTION_META.review
   const Icon = meta.icon
   return (
-    <div className="rounded-2xl bg-card border border-border p-4 flex items-start gap-3">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.color}`}>
+    <div className="rounded-2xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] p-4 flex items-start gap-3">
+      <div className={`w-10 h-10 rounded-xl border flex items-center justify-center flex-shrink-0 ${meta.bg} ${meta.color}`}>
         <Icon className="w-5 h-5" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-white/55">
             {meta.label}
           </span>
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-[11px] text-white/40">
             · {formatTime(item.ts)}
           </span>
         </div>
-        <p className="text-sm font-semibold leading-snug truncate">
+        <p className="text-sm font-semibold leading-snug truncate text-white">
           {item.title}
         </p>
         {item.summary && item.summary !== '—' && (
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+          <p className="text-xs text-white/45 mt-1 line-clamp-2">
             {item.summary}
           </p>
         )}
@@ -121,12 +122,12 @@ function HistoryRow({ item }: { item: HistoryItem }) {
 
 function RowSkeleton() {
   return (
-    <div className="rounded-2xl bg-card border border-border p-4 flex items-start gap-3 animate-pulse">
-      <div className="w-10 h-10 rounded-xl bg-muted flex-shrink-0" />
+    <div className="rounded-2xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] p-4 flex items-start gap-3 animate-pulse">
+      <div className="w-10 h-10 rounded-xl bg-white/10 flex-shrink-0" />
       <div className="flex-1 min-w-0">
-        <div className="h-3 w-20 bg-muted rounded mb-2" />
-        <div className="h-4 w-full max-w-[14rem] bg-muted rounded mb-2" />
-        <div className="h-3 w-32 bg-muted rounded" />
+        <div className="h-3 w-20 bg-white/10 rounded mb-2" />
+        <div className="h-4 w-full max-w-[14rem] bg-white/10 rounded mb-2" />
+        <div className="h-3 w-32 bg-white/10 rounded" />
       </div>
     </div>
   )
@@ -134,19 +135,19 @@ function RowSkeleton() {
 
 function EmptyState({ onStart }: { onStart: () => void }) {
   return (
-    <div className="rounded-2xl bg-card border border-border p-8 text-center">
+    <div className="rounded-2xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] p-8 text-center">
       <img
         src={`${BASE_URL}mascot/raccoon-friendly.png`}
         alt=""
-        className="w-24 h-24 mx-auto mb-3 object-contain"
+        className="w-24 h-24 mx-auto mb-3 object-contain drop-shadow-2xl"
       />
       <h3 className="text-base font-bold mb-1">Здесь пока пусто</h3>
-      <p className="text-sm text-muted-foreground mb-5 max-w-xs mx-auto">
+      <p className="text-sm text-white/45 mb-5 max-w-xs mx-auto">
         Сделайте первую проверку договора — она появится тут
       </p>
       <button
         onClick={onStart}
-        className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-[#F97316] text-white font-semibold text-sm shadow-lg shadow-orange-500/30 active:scale-[0.99]"
+        className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white font-semibold text-sm shadow-2xl shadow-orange-500/30 active:scale-[0.99]"
       >
         <Sparkles className="w-4 h-4" />
         Проверить договор
@@ -182,10 +183,6 @@ function formatTime(ts: string): string {
   }
 }
 
-/**
- * Группирует историю по дням, в порядке от свежего к старому.
- * Внутри одного дня — порядок как пришёл с бэка (там тоже DESC).
- */
 function groupByDay(items: HistoryItem[]): [string, HistoryItem[]][] {
   const map = new Map<string, HistoryItem[]>()
   for (const item of items) {

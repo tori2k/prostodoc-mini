@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Check, Crown, Loader2, Sparkles, Star } from 'lucide-react'
 
-import { Card } from '@/components/ui/card'
+import { motion } from 'framer-motion'
+
+import { DarkScreen } from '@/components/DarkScreen'
 import { api, type MeResponse, ApiError } from '@/lib/api'
 import { haptic, showAlert, openInvoice } from '@/lib/telegram'
 
@@ -140,52 +142,57 @@ export function SubscribePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-dvh">
-        <Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A]" />
-      </div>
+      <DarkScreen noBottomPad>
+        <div className="flex items-center justify-center h-dvh">
+          <Loader2 className="w-8 h-8 animate-spin text-[#F97316]" />
+        </div>
+      </DarkScreen>
     )
   }
 
   return (
-    <div className="min-h-dvh bg-muted/40 pb-12">
-      {/* HERO */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#1E3A8A] via-[#1E3A8A] to-[#3B5FAE] text-white px-5 pt-6 pb-12 rounded-b-[2rem]">
-        <div className="pointer-events-none absolute inset-0 opacity-20">
-          <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-orange-500/40 blur-3xl" />
-          <div className="absolute -bottom-32 -left-20 w-64 h-64 rounded-full bg-indigo-400/30 blur-3xl" />
-        </div>
-
+    <DarkScreen noBottomPad>
+      <motion.section
+        className="px-5 pt-6 pb-6"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
         <button
           onClick={() => navigate(-1)}
-          className="relative inline-flex items-center gap-1 text-white/80 text-sm mb-4 hover:text-white"
+          className="inline-flex items-center gap-1 text-white/55 text-sm mb-5 hover:text-white"
         >
           <ArrowLeft className="w-4 h-4" />
           Назад
         </button>
 
-        <div className="relative flex items-start gap-4">
+        <div className="flex items-start gap-4">
           <div className="flex-1">
-            <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-white/70 mb-1.5">
-              <Sparkles className="w-3.5 h-3.5" />
+            <p className="text-xs uppercase tracking-wider text-white/55 mb-1.5 inline-flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-orange-300" />
               Тарифы
-            </div>
-            <h1 className="text-3xl font-extrabold leading-tight mb-2">
+            </p>
+            <h1 className="text-3xl font-extrabold leading-tight mb-2 bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
               Снимите лимиты
             </h1>
-            <p className="text-sm text-white/85">
+            <p className="text-sm text-white/55">
               Подписка добавляет проверок, договоров, историю и эталоны.
             </p>
           </div>
           <img
             src={`${BASE_URL}mascot/raccoon-friendly.png`}
             alt=""
-            className="w-20 h-20 -mt-2 object-contain drop-shadow-xl"
+            className="w-20 h-20 -mt-2 object-contain drop-shadow-2xl"
           />
         </div>
-      </section>
+      </motion.section>
 
-      {/* Список тарифов */}
-      <section className="px-4 -mt-6 relative z-10 space-y-3">
+      <motion.section
+        className="px-5 pb-10 space-y-3"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, duration: 0.4 }}
+      >
         {PLANS.map((p) => (
           <PlanCard
             key={p.id}
@@ -196,13 +203,13 @@ export function SubscribePage() {
           />
         ))}
 
-        <p className="text-center text-xs text-muted-foreground pt-4 px-4 leading-relaxed">
+        <p className="text-center text-xs text-white/40 pt-4 px-4 leading-relaxed">
           Оплата через Telegram Stars (⭐). Подписка возобновляется
           автоматически каждый месяц. Отменить можно в настройках Telegram
           → Платежи и подписки.
         </p>
-      </section>
-    </div>
+      </motion.section>
+    </DarkScreen>
   )
 }
 
@@ -217,70 +224,83 @@ function PlanCard({
   const isHighlight = plan.highlight
 
   return (
-    <Card className={`
-      relative overflow-hidden p-5
-      ${isHighlight ? 'border-2 border-[#F97316] shadow-lg shadow-orange-500/20' : ''}
-    `}>
+    <div
+      className={`
+        relative overflow-hidden p-5 rounded-2xl backdrop-blur-xl
+        ${isHighlight
+          ? 'bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-orange-500/5 border-2 border-orange-500/40 shadow-2xl shadow-orange-500/20'
+          : 'bg-white/[0.04] border border-white/[0.08]'}
+      `}
+    >
+      {isHighlight && (
+        <>
+          <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-orange-400/15 blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-12 -left-12 w-40 h-40 rounded-full bg-yellow-400/10 blur-2xl pointer-events-none" />
+        </>
+      )}
+
       {plan.badge && (
-        <span className="absolute top-3 right-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-[#F97316] text-white rounded-full px-2.5 py-1">
+        <span className="absolute top-3 right-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white rounded-full px-2.5 py-1 shadow-lg shadow-orange-500/30">
           <Crown className="w-3 h-3" />
           {plan.badge}
         </span>
       )}
 
-      <div className="flex items-baseline gap-2 mb-1">
-        <h3 className="text-lg font-bold">{plan.name}</h3>
-        {current && (
-          <span className="text-[10px] uppercase tracking-wider bg-emerald-100 text-emerald-700 rounded-full px-2 py-0.5 font-bold">
-            ваш тариф
-          </span>
+      <div className="relative">
+        <div className="flex items-baseline gap-2 mb-1">
+          <h3 className="text-lg font-bold text-white">{plan.name}</h3>
+          {current && (
+            <span className="text-[10px] uppercase tracking-wider bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 rounded-full px-2 py-0.5 font-bold">
+              ваш тариф
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-white/55 mb-3">{plan.desc}</p>
+
+        <div className="flex items-baseline gap-1 mb-4">
+          <span className="text-3xl font-extrabold text-white">{plan.priceLabel}</span>
+          {plan.price > 0 && (
+            <span className="text-sm text-white/45">/ месяц</span>
+          )}
+        </div>
+
+        <ul className="space-y-2 mb-5">
+          {plan.perks.map((perk, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm text-white/85">
+              <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isHighlight ? 'text-orange-300' : 'text-emerald-300'}`} />
+              <span>{perk}</span>
+            </li>
+          ))}
+        </ul>
+
+        {!current && plan.id !== 'free' && (
+          <button
+            onClick={onPick}
+            disabled={buying}
+            className={`
+              w-full h-11 rounded-xl font-semibold transition-all active:scale-[0.98]
+              inline-flex items-center justify-center gap-1.5
+              disabled:opacity-70
+              ${isHighlight
+                ? 'bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white shadow-2xl shadow-orange-500/30'
+                : 'bg-white/[0.08] border border-white/[0.12] text-white hover:bg-white/[0.12]'}
+            `}
+          >
+            {buying ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Открываю оплату…
+              </>
+            ) : plan.stars ? (
+              <>
+                <Star className="w-4 h-4 fill-current" />
+                {plan.stars}
+                <span className="font-normal opacity-90 ml-0.5">/ месяц</span>
+              </>
+            ) : 'Выбрать'}
+          </button>
         )}
       </div>
-      <p className="text-xs text-muted-foreground mb-3">{plan.desc}</p>
-
-      <div className="flex items-baseline gap-1 mb-4">
-        <span className="text-3xl font-extrabold">{plan.priceLabel}</span>
-        {plan.price > 0 && (
-          <span className="text-sm text-muted-foreground">/ месяц</span>
-        )}
-      </div>
-
-      <ul className="space-y-2 mb-5">
-        {plan.perks.map((perk, i) => (
-          <li key={i} className="flex items-start gap-2 text-sm">
-            <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isHighlight ? 'text-[#F97316]' : 'text-emerald-600'}`} />
-            <span>{perk}</span>
-          </li>
-        ))}
-      </ul>
-
-      {!current && plan.id !== 'free' && (
-        <button
-          onClick={onPick}
-          disabled={buying}
-          className={`
-            w-full h-11 rounded-xl font-semibold transition-all active:scale-[0.98]
-            inline-flex items-center justify-center gap-1.5
-            disabled:opacity-70
-            ${isHighlight
-              ? 'bg-[#F97316] text-white shadow-md shadow-orange-500/30'
-              : 'bg-[#1E3A8A] text-white'}
-          `}
-        >
-          {buying ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Открываю оплату…
-            </>
-          ) : plan.stars ? (
-            <>
-              <Star className="w-4 h-4 fill-current" />
-              {plan.stars}
-              <span className="font-normal opacity-90 ml-0.5">/ месяц</span>
-            </>
-          ) : 'Выбрать'}
-        </button>
-      )}
-    </Card>
+    </div>
   )
 }

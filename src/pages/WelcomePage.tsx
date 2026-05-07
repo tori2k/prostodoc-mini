@@ -31,12 +31,12 @@ export function WelcomePage() {
   }
 
   return (
-    <div className="min-h-dvh bg-gradient-to-br from-[#1E3A8A] via-[#1E3A8A] to-[#0F1E4D] text-white relative overflow-hidden">
-      {/* Декоративные размытые круги */}
-      <div className="pointer-events-none absolute inset-0 opacity-30">
-        <div className="absolute -top-40 -right-32 w-96 h-96 rounded-full bg-orange-500/40 blur-3xl" />
-        <div className="absolute top-1/3 -left-40 w-96 h-96 rounded-full bg-indigo-400/30 blur-3xl" />
-        <div className="absolute -bottom-40 left-1/4 w-80 h-80 rounded-full bg-purple-500/20 blur-3xl" />
+    <div className="min-h-dvh bg-[#0a0a0f] text-white relative overflow-hidden">
+      {/* Декоративные размытые круги — те же brand-цвета, что в DarkScreen */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-40 -right-32 w-96 h-96 rounded-full bg-[#1E3A8A]/30 blur-[128px] animate-pulse" />
+        <div className="absolute top-1/3 -left-40 w-96 h-96 rounded-full bg-[#F97316]/20 blur-[120px] animate-pulse [animation-delay:700ms]" />
+        <div className="absolute -bottom-40 left-1/4 w-80 h-80 rounded-full bg-violet-500/20 blur-[96px] animate-pulse [animation-delay:1400ms]" />
       </div>
 
       <div className="relative px-6 pt-10 pb-6">
@@ -98,8 +98,8 @@ export function WelcomePage() {
         <button
           onClick={goToHome}
           className="
-            w-full h-14 rounded-2xl bg-[#F97316] text-white font-bold
-            shadow-lg shadow-orange-500/40
+            w-full h-14 rounded-2xl bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white font-bold
+            shadow-2xl shadow-orange-500/40
             transition-all active:scale-[0.98]
             text-base
           "

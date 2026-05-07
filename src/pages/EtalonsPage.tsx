@@ -5,6 +5,9 @@ import {
   Upload, Home,
 } from 'lucide-react'
 
+import { motion } from 'framer-motion'
+
+import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
 import { api, ApiError, type Etalon } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
 
@@ -92,11 +95,11 @@ export function EtalonsPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-muted/40 pb-8">
-      <header className="bg-card border-b border-border px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <DarkScreen noBottomPad>
+      <GlassHeader>
         <button
           onClick={() => navigate(-1)}
-          className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors"
+          className="p-2 -ml-2 rounded-lg hover:bg-white/5 transition-colors"
           aria-label="Назад"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -104,25 +107,29 @@ export function EtalonsPage() {
         <h1 className="text-base font-bold flex-1">Эталоны</h1>
         <button
           onClick={() => navigate('/home')}
-          className="p-2 -mr-2 rounded-lg hover:bg-muted transition-colors"
+          className="p-2 -mr-2 rounded-lg hover:bg-white/5 transition-colors"
           aria-label="Главная"
         >
           <Home className="w-5 h-5" />
         </button>
-      </header>
+      </GlassHeader>
 
-      <section className="bg-gradient-to-br from-[#1E3A8A] to-[#3B5FAE] text-white px-5 pt-6 pb-7 rounded-b-[2rem] relative overflow-hidden">
-        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-orange-500/30 blur-3xl" />
-        <div className="relative">
-          <Crown className="w-6 h-6 mb-2 text-orange-300" />
-          <h2 className="text-2xl font-extrabold leading-tight mb-1.5">
-            Ваши эталоны
-          </h2>
-          <p className="text-sm text-white/85">
-            Загрузите свои образцовые договоры — AI будет генерировать в вашем стиле
-          </p>
+      <motion.section
+        className="px-5 pt-6 pb-5"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-orange-500/15 border border-orange-500/30 mb-3">
+          <Crown className="w-6 h-6 text-orange-300" />
         </div>
-      </section>
+        <h2 className="text-2xl font-extrabold leading-tight mb-1.5 bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
+          Ваши эталоны
+        </h2>
+        <p className="text-sm text-white/55">
+          Загрузите свои образцовые договоры — AI будет генерировать в вашем стиле
+        </p>
+      </motion.section>
 
       <input
         ref={inputRef}
@@ -135,42 +142,45 @@ export function EtalonsPage() {
         }}
       />
 
-      <div className="px-5 -mt-4 relative z-10 space-y-3">
+      <div className="px-5 pb-8 space-y-3">
         {loading && (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A]" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#F97316]" />
           </div>
         )}
 
         {!loading && error && (
-          <div className="rounded-xl bg-red-50 border border-red-200 p-4 flex gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-800">{error}</p>
+          <div className="rounded-xl backdrop-blur-xl bg-red-500/10 border border-red-400/30 p-4 flex gap-3">
+            <AlertCircle className="w-5 h-5 text-red-300 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-100">{error}</p>
           </div>
         )}
 
         {!loading && planLocked && (
-          <div className="rounded-2xl bg-card border border-border p-5 text-center">
-            <Crown className="w-10 h-10 text-[#F97316] mx-auto mb-2" />
-            <h3 className="text-base font-bold mb-1">Только для Pro и Юрист</h3>
-            <p className="text-sm text-muted-foreground mb-4 max-w-xs mx-auto">
-              Эталоны — это ваши образцовые договоры, по стилю которых AI делает новые.
-            </p>
-            <button
-              onClick={() => navigate('/subscribe')}
-              className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-[#F97316] text-white font-semibold text-sm shadow-lg shadow-orange-500/30 active:scale-[0.99]"
-            >
-              Посмотреть тарифы
-            </button>
+          <div className="rounded-2xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] p-5 text-center relative overflow-hidden">
+            <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-orange-500/15 blur-2xl" />
+            <div className="relative">
+              <Crown className="w-10 h-10 text-orange-300 mx-auto mb-2" />
+              <h3 className="text-base font-bold mb-1">Только для Pro и Юрист</h3>
+              <p className="text-sm text-white/55 mb-4 max-w-xs mx-auto">
+                Эталоны — это ваши образцовые договоры, по стилю которых AI делает новые.
+              </p>
+              <button
+                onClick={() => navigate('/subscribe')}
+                className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white font-semibold text-sm shadow-2xl shadow-orange-500/30 active:scale-[0.99]"
+              >
+                Посмотреть тарифы
+              </button>
+            </div>
           </div>
         )}
 
         {!loading && !planLocked && items && (
           <>
             {items.length === 0 ? (
-              <div className="rounded-2xl bg-card border border-border p-6 text-center">
-                <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">
+              <div className="rounded-2xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] p-6 text-center">
+                <FileText className="w-10 h-10 text-white/45 mx-auto mb-2" />
+                <p className="text-sm text-white/55">
                   Эталонов пока нет. Загрузите первый — AI учтёт его при генерации.
                 </p>
               </div>
@@ -179,21 +189,21 @@ export function EtalonsPage() {
                 {items.map((e) => (
                   <div
                     key={e.idx}
-                    className="rounded-xl bg-card border border-border p-3 flex items-center gap-3"
+                    className="rounded-xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] p-3 flex items-center gap-3"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-blue-500/15 border border-blue-500/25 text-blue-300 flex items-center justify-center flex-shrink-0">
                       <FileText className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{e.name}</p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-sm font-semibold truncate text-white">{e.name}</p>
+                      <p className="text-[11px] text-white/45">
                         {(e.length / 1000).toFixed(1)}k символов
                       </p>
                     </div>
                     <button
                       onClick={() => onRemove(e.idx)}
                       disabled={removing === e.idx}
-                      className="p-2 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors disabled:opacity-50"
+                      className="p-2 rounded-lg hover:bg-red-500/15 text-white/55 hover:text-red-300 transition-colors disabled:opacity-50"
                       aria-label="Удалить эталон"
                     >
                       {removing === e.idx ? (
@@ -214,8 +224,8 @@ export function EtalonsPage() {
                 w-full h-12 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2
                 transition-all active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed
                 ${items.length >= max
-                  ? 'bg-muted text-muted-foreground'
-                  : 'bg-[#F97316] text-white shadow-lg shadow-orange-500/30'}
+                  ? 'bg-white/[0.05] text-white/40'
+                  : 'bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white shadow-2xl shadow-orange-500/30'}
               `}
             >
               {uploading ? (
@@ -233,12 +243,12 @@ export function EtalonsPage() {
               )}
             </button>
 
-            <p className="text-center text-[11px] text-muted-foreground pt-1">
+            <p className="text-center text-[11px] text-white/40 pt-1">
               {items.length} из {max} · PDF, DOCX или TXT, до 50k символов
             </p>
           </>
         )}
       </div>
-    </div>
+    </DarkScreen>
   )
 }

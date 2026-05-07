@@ -1,14 +1,27 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
   ArrowLeft, Loader2, AlertCircle, ChevronRight, Download, Home,
-  FileText, Sparkles,
+  FileText, Sparkles, Wand2,
 } from 'lucide-react'
 
+import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
 import { api, ApiError, type Template } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
+import { cn } from '@/lib/utils'
 
 type Step = 'list' | 'form' | 'result'
+
+/** Виртуальный шаблон «Свой вариант» — без quick_fields, форма = одна textarea. */
+const CUSTOM_TEMPLATE: Template = {
+  id: 'custom',
+  name: '✨ Свой вариант',
+  desc: 'Опишите своими словами что нужно — AI соберёт договор',
+  fields: [
+    { key: 'description', label: 'Что должно быть в договоре' },
+  ],
+}
 
 export function GeneratePage() {
   const navigate = useNavigate()
@@ -57,13 +70,16 @@ export function GeneratePage() {
       setStep('result')
       haptic('heavy')
     } catch (e: unknown) {
-      const err = e as { name?: string; status?: number; message?: string }
+      const err = e as { name?: string; status?: number; message?: string; detail?: { message?: string } }
+      const detailMsg = err?.detail?.message
       if (err?.status === 429) {
         showAlert('Лимит договоров исчерпан. Загляните в Тарифы.')
       } else if (err?.status === 401) {
         showAlert('Откройте мини-приложение из бота заново.')
       } else if (err?.status === 503) {
         showAlert('AI временно недоступен. Попробуйте через минуту.')
+      } else if (err?.status === 400 && detailMsg) {
+        showAlert(detailMsg)
       } else {
         showAlert(`Ошибка ${err?.status ?? '?'}: ${err?.message ?? String(e)}`)
       }
@@ -77,11 +93,12 @@ export function GeneratePage() {
     setDownloading(true)
     haptic('medium')
     try {
-      const blob = await api.generateDocx(contractHtml, tpl.name.replace(/^\W+/, ''))
+      const cleanName = tpl.name.replace(/^\W+/, '').trim() || 'contract'
+      const blob = await api.generateDocx(contractHtml, cleanName)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${tpl.name.replace(/^\W+/, '').trim()}.docx`
+      a.download = `${cleanName}.docx`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -107,11 +124,11 @@ export function GeneratePage() {
   }
 
   return (
-    <div className="min-h-dvh bg-muted/40 pb-8">
-      <header className="bg-card border-b border-border px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <DarkScreen noBottomPad>
+      <GlassHeader>
         <button
           onClick={goBack}
-          className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors"
+          className="p-2 -ml-2 rounded-lg hover:bg-white/5 transition-colors"
           aria-label="Назад"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -124,13 +141,13 @@ export function GeneratePage() {
         {step !== 'list' && (
           <button
             onClick={() => navigate('/home')}
-            className="p-2 -mr-2 rounded-lg hover:bg-muted transition-colors"
+            className="p-2 -mr-2 rounded-lg hover:bg-white/5 transition-colors"
             aria-label="Главная"
           >
             <Home className="w-5 h-5" />
           </button>
         )}
-      </header>
+      </GlassHeader>
 
       {step === 'list' && (
         <ListView
@@ -165,7 +182,7 @@ export function GeneratePage() {
           }}
         />
       )}
-    </div>
+    </DarkScreen>
   )
 }
 
@@ -181,9 +198,9 @@ function ListView({
   if (loadError) {
     return (
       <div className="px-5 pt-6">
-        <div className="rounded-xl bg-red-50 border border-red-200 p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-800">{loadError}</p>
+        <div className="rounded-xl backdrop-blur-xl bg-red-500/10 border border-red-400/30 p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-red-300 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-100">{loadError}</p>
         </div>
       </div>
     )
@@ -191,46 +208,84 @@ function ListView({
   if (!templates) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#F97316]" />
       </div>
     )
   }
   return (
-    <>
-      {/* Hero */}
-      <section className="bg-gradient-to-br from-[#1E3A8A] to-[#3B5FAE] text-white px-5 pt-6 pb-8 rounded-b-[2rem] relative overflow-hidden">
-        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-orange-500/30 blur-3xl" />
-        <div className="relative">
-          <Sparkles className="w-6 h-6 mb-2 text-orange-300" />
-          <h2 className="text-2xl font-extrabold leading-tight mb-1.5">
-            AI соберёт договор
-          </h2>
-          <p className="text-sm text-white/80">
-            Выберите шаблон, заполните 4-5 полей — получите готовый DOCX
-          </p>
+    <motion.div
+      className="px-5 pt-5 pb-8"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      {/* Inline-hero */}
+      <section className="mb-5">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-orange-500/15 border border-orange-500/30 mb-3">
+          <Wand2 className="w-6 h-6 text-orange-300" />
         </div>
+        <h2 className="text-2xl font-medium tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/55">
+          AI соберёт договор
+        </h2>
+        <p className="text-sm text-white/45 mt-1.5">
+          Выберите шаблон или опишите своими словами — получите готовый DOCX
+        </p>
       </section>
 
-      <section className="px-5 -mt-4 relative z-10 space-y-2.5">
+      {/* «Свой вариант» — выделен отдельной premium-карточкой */}
+      <button
+        onClick={() => onPick(CUSTOM_TEMPLATE)}
+        className="
+          w-full text-left rounded-2xl mb-3 p-4 relative overflow-hidden
+          bg-gradient-to-br from-violet-600/20 via-fuchsia-500/15 to-orange-500/15
+          border border-violet-400/25 backdrop-blur-xl
+          transition-transform active:scale-[0.99]
+        "
+      >
+        <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-violet-500/20 blur-2xl" />
+        <div className="absolute -left-6 -bottom-6 w-32 h-32 rounded-full bg-orange-500/15 blur-2xl" />
+        <div className="relative flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white shadow-lg shadow-violet-500/30">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-bold text-white">Свой вариант</p>
+              <span className="text-[9px] font-bold uppercase tracking-wider bg-white/15 backdrop-blur-sm rounded-full px-1.5 py-0.5">
+                AI
+              </span>
+            </div>
+            <p className="text-xs text-white/65 leading-snug mt-0.5">
+              Опишите своими словами — соберу любой договор
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-white/50 flex-shrink-0" />
+        </div>
+      </button>
+
+      <p className="text-[11px] text-white/35 uppercase tracking-wider px-1 mb-2 mt-5 font-semibold">
+        Готовые шаблоны
+      </p>
+      <div className="space-y-2">
         {templates.map((t) => (
           <button
             key={t.id}
             onClick={() => onPick(t)}
-            className="w-full text-left rounded-2xl bg-card border border-border p-4 flex items-start gap-3 hover:bg-muted/40 transition-colors active:scale-[0.99]"
+            className="w-full text-left rounded-2xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] p-4 flex items-start gap-3 hover:bg-white/[0.07] transition-colors active:scale-[0.99]"
           >
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold leading-tight mb-1">{t.name}</p>
-              <p className="text-xs text-muted-foreground leading-snug">{t.desc}</p>
+              <p className="text-sm font-semibold leading-tight mb-1 text-white">{t.name}</p>
+              <p className="text-xs text-white/50 leading-snug">{t.desc}</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+            <ChevronRight className="w-5 h-5 text-white/40 flex-shrink-0 mt-0.5" />
           </button>
         ))}
-      </section>
+      </div>
 
-      <p className="text-center text-[11px] text-muted-foreground mt-6 px-5">
+      <p className="text-center text-[11px] text-white/40 mt-6">
         Списывается 1 договор из месячного лимита
       </p>
-    </>
+    </motion.div>
   )
 }
 
@@ -246,34 +301,44 @@ function FormView({
   generating: boolean
   onSubmit: () => void
 }) {
+  const isCustom = tpl.id === 'custom'
   return (
-    <div className="px-5 pt-5 pb-6 space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Заполните поля — AI соберёт договор и подсветит места, которые
-        стоит уточнить.
+    <motion.div
+      className="px-5 pt-5 pb-6 space-y-4"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <p className="text-sm text-white/55">
+        {isCustom
+          ? 'Опишите подробно что должно быть в договоре: стороны, предмет, цена, сроки, особые условия.'
+          : 'Заполните поля — AI соберёт договор и подсветит места, которые стоит уточнить.'}
       </p>
 
       <div className="space-y-3">
         {tpl.fields.map((f) => {
-          const isLong = /условия|опис|функц|субъект|предмет/i.test(f.label)
+          const isLong = isCustom || /условия|опис|функц|субъект|предмет/i.test(f.label)
           return (
             <div key={f.key}>
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-white/55 block mb-1.5">
                 {f.label}
               </label>
               {isLong ? (
                 <textarea
                   value={fields[f.key] ?? ''}
                   onChange={(e) => onChange(f.key, e.target.value)}
-                  rows={3}
-                  className="w-full rounded-xl bg-card border border-border px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] resize-none"
+                  rows={isCustom ? 8 : 3}
+                  placeholder={isCustom
+                    ? 'Например: договор подряда на разработку сайта, исполнитель — ИП на УСН, заказчик — ООО, цена 300 000 ₽, срок 3 месяца, поэтапная сдача…'
+                    : ''}
+                  className="w-full rounded-xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] px-3.5 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/40 resize-none"
                 />
               ) : (
                 <input
                   type="text"
                   value={fields[f.key] ?? ''}
                   onChange={(e) => onChange(f.key, e.target.value)}
-                  className="w-full h-11 rounded-xl bg-card border border-border px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
+                  className="w-full h-11 rounded-xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] px-3.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/40"
                 />
               )}
             </div>
@@ -284,12 +349,12 @@ function FormView({
       <button
         onClick={onSubmit}
         disabled={!allFilled || generating}
-        className={`
-          w-full h-14 rounded-2xl font-bold text-base transition-all
-          ${allFilled && !generating
-            ? 'bg-[#F97316] text-white shadow-lg shadow-orange-500/30 active:scale-[0.99]'
-            : 'bg-muted text-muted-foreground'}
-        `}
+        className={cn(
+          'w-full h-14 rounded-2xl font-bold text-base transition-all',
+          allFilled && !generating
+            ? 'bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white shadow-2xl shadow-orange-500/30 active:scale-[0.99]'
+            : 'bg-white/[0.05] text-white/40',
+        )}
       >
         {generating ? (
           <span className="inline-flex items-center gap-2">
@@ -301,10 +366,10 @@ function FormView({
         )}
       </button>
 
-      <p className="text-center text-[11px] text-muted-foreground">
+      <p className="text-center text-[11px] text-white/40">
         Обычно занимает 20-40 секунд
       </p>
-    </div>
+    </motion.div>
   )
 }
 
@@ -320,27 +385,32 @@ function ResultView({
   onNew: () => void
 }) {
   return (
-    <div className="space-y-4">
-      <section className="bg-gradient-to-br from-emerald-500 to-green-600 text-white px-5 pt-6 pb-6 rounded-b-[2rem] relative overflow-hidden">
-        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/15 blur-3xl" />
+    <motion.div
+      className="px-5 pt-5 pb-6 space-y-4"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <div className="rounded-2xl bg-gradient-to-br from-emerald-500/20 to-green-600/15 border border-emerald-400/30 backdrop-blur-xl px-5 py-4 relative overflow-hidden">
+        <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-emerald-400/15 blur-2xl" />
         <div className="relative">
-          <p className="text-xs uppercase tracking-wider text-white/80 mb-1">
+          <p className="text-xs uppercase tracking-wider text-emerald-200/80 mb-1">
             Готово
           </p>
-          <h2 className="text-2xl font-extrabold leading-tight mb-1.5">
+          <h2 className="text-xl font-extrabold leading-tight mb-1">
             {tpl.name}
           </h2>
-          <p className="text-sm text-white/85">
+          <p className="text-sm text-emerald-100/85">
             Жёлтым подсвечены места, которые стоит проверить или уточнить
           </p>
         </div>
-      </section>
+      </div>
 
-      <section className="px-5 space-y-2.5">
+      <div className="space-y-2.5">
         <button
           onClick={onDownload}
           disabled={downloading}
-          className="w-full h-14 rounded-2xl bg-[#1E3A8A] text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all active:scale-[0.99] disabled:opacity-60"
+          className="w-full h-14 rounded-2xl bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white font-bold flex items-center justify-center gap-2 shadow-2xl shadow-orange-500/30 transition-all active:scale-[0.99] disabled:opacity-60"
         >
           {downloading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -352,24 +422,24 @@ function ResultView({
 
         <button
           onClick={onNew}
-          className="w-full h-12 rounded-2xl bg-card border border-border text-sm font-semibold flex items-center justify-center gap-2 transition-colors hover:bg-muted/50"
+          className="w-full h-12 rounded-2xl backdrop-blur-xl bg-white/[0.04] border border-white/[0.08] text-sm font-semibold flex items-center justify-center gap-2 transition-colors hover:bg-white/[0.07]"
         >
           <FileText className="w-4 h-4" />
           Создать ещё один
         </button>
-      </section>
+      </div>
 
-      <section className="px-5">
-        <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">
+      <div>
+        <h3 className="text-xs uppercase tracking-wider text-white/45 font-semibold mb-2">
           Превью
         </h3>
-        <div className="doc-surface rounded-2xl border border-border p-5 max-h-[60dvh] overflow-y-auto">
+        <div className="doc-surface rounded-2xl border border-white/10 p-5 max-h-[60dvh] overflow-y-auto shadow-2xl">
           <div
             className="text-sm leading-relaxed whitespace-pre-wrap"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         </div>
-      </section>
-    </div>
+      </div>
+    </motion.div>
   )
 }

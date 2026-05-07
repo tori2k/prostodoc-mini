@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
-  ArrowLeft, Upload, Loader2, AlertCircle, FileText,
+  ArrowLeft, Upload, AlertCircle, FileText, Home,
 } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
+import { DarkScreen, GlassHeader } from '@/components/DarkScreen'
 import { api, ApiError } from '@/lib/api'
 import { haptic, showAlert } from '@/lib/telegram'
 import { ReviewResult } from '@/components/ReviewResult'
@@ -79,27 +80,27 @@ export function ReviewPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-muted/40">
-      {/* Header */}
-      <header className="bg-card border-b border-border px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
-        <Button
-          variant="ghost"
-          size="icon"
+    <DarkScreen noBottomPad>
+      <GlassHeader>
+        <button
           onClick={() => navigate('/home')}
+          className="p-2 -ml-2 rounded-lg hover:bg-white/5 transition-colors"
           aria-label="Назад"
         >
           <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div>
+        </button>
+        <div className="flex-1">
           <h1 className="text-base font-bold leading-none">Проверить договор</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            AI найдёт риски за 30 секунд
-          </p>
+          <p className="text-xs text-white/45 mt-0.5">AI найдёт риски за 30 секунд</p>
         </div>
-      </header>
+      </GlassHeader>
 
-      <div className="px-5 pt-5 pb-8">
-        {/* Шаг 1 — файл */}
+      <motion.div
+        className="px-5 pt-5 pb-8"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
         <Step n={1} title="Загрузите договор">
           <FileDropZone
             file={file}
@@ -110,7 +111,6 @@ export function ReviewPage() {
           />
         </Step>
 
-        {/* Шаг 2 — роль */}
         <Step n={2} title="Чьи интересы защищать?">
           <div className="grid grid-cols-2 gap-2">
             {PERSPECTIVES.map((p) => {
@@ -125,12 +125,12 @@ export function ReviewPage() {
                   className={`
                     rounded-xl border p-3 text-left transition-all
                     ${isActive
-                      ? 'bg-[#1E3A8A] text-white border-[#1E3A8A] shadow-md shadow-[#1E3A8A]/30'
-                      : 'bg-card border-border'}
+                      ? 'bg-[#F97316]/15 border-[#F97316]/50 shadow-lg shadow-orange-500/10'
+                      : 'bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.07]'}
                   `}
                 >
                   <p className="text-sm font-semibold">{p.label}</p>
-                  <p className={`text-[11px] mt-0.5 ${isActive ? 'text-white/70' : 'text-muted-foreground'}`}>
+                  <p className={`text-[11px] mt-0.5 ${isActive ? 'text-orange-200/80' : 'text-white/45'}`}>
                     {p.hint}
                   </p>
                 </button>
@@ -139,36 +139,40 @@ export function ReviewPage() {
           </div>
         </Step>
 
-        {/* CTA */}
         <button
           onClick={handleSubmit}
           disabled={!file || !perspective || loading}
           className="
-            w-full h-14 rounded-2xl bg-[#F97316] text-white font-bold
-            shadow-lg shadow-orange-500/30
+            w-full h-14 rounded-2xl bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white font-bold
+            shadow-2xl shadow-orange-500/30
             transition-all active:scale-[0.98]
             disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed
             flex items-center justify-center gap-2
           "
         >
           {loading ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Анализирую…
-            </>
+            <span className="inline-flex items-center gap-2">
+              Анализирую <TypingDots />
+            </span>
           ) : (
-            <>
-              ⚡ Найти риски
-            </>
+            <>⚡ Найти риски</>
           )}
         </button>
 
-        <p className="text-[11px] text-muted-foreground text-center mt-3 flex items-center justify-center gap-1.5">
+        <p className="text-[11px] text-white/45 text-center mt-3 flex items-center justify-center gap-1.5">
           <AlertCircle className="w-3 h-3" />
           Анализ занимает 30–60 секунд
         </p>
-      </div>
-    </div>
+
+        <button
+          onClick={() => navigate('/home')}
+          className="mx-auto mt-6 inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors"
+        >
+          <Home className="w-3.5 h-3.5" />
+          На главную
+        </button>
+      </motion.div>
+    </DarkScreen>
   )
 }
 
@@ -184,7 +188,7 @@ function Step({
   return (
     <section className="mb-6">
       <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-        <span className="w-6 h-6 rounded-full bg-[#1E3A8A] text-white text-xs flex items-center justify-center font-bold">
+        <span className="w-6 h-6 rounded-full bg-gradient-to-br from-[#1E3A8A] to-[#3B5FAE] text-white text-xs flex items-center justify-center font-bold shadow-lg shadow-blue-500/30">
           {n}
         </span>
         {title}
@@ -202,27 +206,25 @@ function FileDropZone({
 }) {
   if (file) {
     return (
-      <div className="rounded-2xl border-2 border-[#F97316] bg-orange-50 p-5">
+      <div className="rounded-2xl border border-[#F97316]/40 bg-gradient-to-br from-[#F97316]/10 to-orange-500/5 backdrop-blur-xl p-5">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-lg bg-[#F97316] flex items-center justify-center text-white">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#F97316] to-[#EA580C] flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
             <FileText className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm truncate">{file.name}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="font-medium text-sm truncate text-white">{file.name}</p>
+            <p className="text-xs text-white/50">
               {(file.size / 1024 / 1024).toFixed(2)} МБ
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
+        <button
           onClick={() => document.getElementById('contract-file')?.click()}
           type="button"
+          className="w-full h-9 rounded-lg backdrop-blur-xl bg-white/[0.05] border border-white/[0.1] text-sm font-medium hover:bg-white/[0.08] transition-colors"
         >
           Заменить файл
-        </Button>
+        </button>
         <input
           type="file"
           accept=".pdf,.docx,.txt"
@@ -242,14 +244,14 @@ function FileDropZone({
       onClick={() => document.getElementById('contract-file')?.click()}
       type="button"
       className="
-        w-full rounded-2xl border-2 border-dashed border-border
-        bg-card hover:bg-muted/50 transition-colors
+        w-full rounded-2xl border-2 border-dashed border-white/15
+        bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/25 transition-colors
         p-8 text-center
       "
     >
-      <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+      <Upload className="w-10 h-10 mx-auto mb-3 text-white/55" />
       <p className="font-semibold mb-1">Выберите файл</p>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-white/45">
         PDF · DOCX · TXT — до 20 МБ
       </p>
       <input
@@ -263,5 +265,26 @@ function FileDropZone({
         }}
       />
     </button>
+  )
+}
+
+function TypingDots() {
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="w-1.5 h-1.5 bg-current rounded-full"
+          initial={{ opacity: 0.3 }}
+          animate={{ opacity: [0.3, 1, 0.3], scale: [0.85, 1.1, 0.85] }}
+          transition={{
+            duration: 1.2,
+            repeat: Infinity,
+            delay: i * 0.15,
+            ease: 'easeInOut',
+          }}
+        />
+      ))}
+    </span>
   )
 }

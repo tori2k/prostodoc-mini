@@ -42,13 +42,13 @@
  */
 
 .dark {
-  --color-background: #0a0a0a;
+  --color-background: #0a0a0f;
   --color-foreground: #f3f4f6;
-  --color-muted: #1f2028;
-  --color-muted-foreground: #9ca3af;
-  --color-card: #16171d;
+  --color-muted: rgba(255, 255, 255, 0.06);
+  --color-muted-foreground: rgba(255, 255, 255, 0.55);
+  --color-card: rgba(255, 255, 255, 0.03);
   --color-card-foreground: #f3f4f6;
-  --color-border: #2e303a;
+  --color-border: rgba(255, 255, 255, 0.08);
 }
 
 /* Сбросы */
