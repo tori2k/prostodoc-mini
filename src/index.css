@@ -63,6 +63,34 @@ body {
   flex-direction: column;
 }
 
+/* ─── Документ ────────────────────────────────────────────────────────
+ * .doc-surface — «лист бумаги»: всегда светлый, всегда тёмный текст,
+ * независимо от тёмной темы UI. Для превью договоров, карточек рисков
+ * и любого контента, который генерируется AI и должен выглядеть
+ * как печатный документ.
+ */
+
+.doc-surface {
+  background: #ffffff;
+  color: #0f172a; /* slate-900 */
+}
+
+.doc-surface b,
+.doc-surface strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.doc-surface i,
+.doc-surface em {
+  color: #334155; /* slate-700 */
+}
+
+.doc-surface a {
+  color: #1E3A8A;
+  text-decoration: underline;
+}
+
 /* ─── Анимации orbital-timeline ──────────────────────────────────────── */
 
 @keyframes orbital-pulse {

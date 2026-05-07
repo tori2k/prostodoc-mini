@@ -181,9 +181,9 @@ export function ReviewResult({ text, fileName, onBack, onHome }: ReviewResultPro
             <ChevronDown className={`w-4 h-4 transition-transform ${showRaw ? 'rotate-180' : ''}`} />
           </button>
           {showRaw && (
-            <div className="mt-2 rounded-xl bg-card border border-border p-4">
+            <div className="doc-surface mt-2 rounded-xl border border-border p-4">
               <div
-                className="text-sm leading-relaxed [&>b]:font-bold [&>b]:text-foreground"
+                className="text-sm leading-relaxed whitespace-pre-wrap"
                 dangerouslySetInnerHTML={{ __html: parsed.raw }}
               />
             </div>

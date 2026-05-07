@@ -363,9 +363,9 @@ function ResultView({
         <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">
           Превью
         </h3>
-        <div className="rounded-2xl bg-card border border-border p-4 max-h-[60dvh] overflow-y-auto">
+        <div className="doc-surface rounded-2xl border border-border p-5 max-h-[60dvh] overflow-y-auto">
           <div
-            className="text-sm leading-relaxed whitespace-pre-wrap [&>b]:font-bold [&>b]:text-foreground"
+            className="text-sm leading-relaxed whitespace-pre-wrap"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         </div>
