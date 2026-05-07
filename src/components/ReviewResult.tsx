@@ -17,9 +17,9 @@ const RATING_BG: Record<string, string> = {
 }
 
 const RATING_MASCOT: Record<string, string> = {
-  red:     'raccoon-thinking.png',
-  yellow:  'raccoon-thinking.png',
-  green:   'raccoon-friendly.png',
+  red:     'raccoon-danger.png',
+  yellow:  'raccoon-medium.png',
+  green:   'raccoon-safe.png',
   unknown: 'raccoon-friendly.png',
 }
 
