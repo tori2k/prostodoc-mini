@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Loader2, Crown, Sparkles, AlertCircle, Compass,
+  Crown, Sparkles, AlertCircle, Compass, FileStack,
 } from 'lucide-react'
 
 import { Card, CardContent } from '@/components/ui/card'
@@ -23,7 +23,6 @@ export function ProfilePage() {
   const navigate = useNavigate()
   const [me, setMe] = useState<MeResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     api.me()
@@ -35,16 +34,7 @@ export function ProfilePage() {
           setError('Не удалось загрузить профиль. Попробуйте позже.')
         }
       })
-      .finally(() => setLoading(false))
   }, [])
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-dvh">
-        <Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A]" />
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-dvh bg-muted/40 pb-24">
@@ -57,21 +47,24 @@ export function ProfilePage() {
           <div className="flex-1">
             <p className="text-xs uppercase tracking-wider text-white/70 mb-1">Профиль</p>
             {me ? (
-              <h1 className="text-2xl font-extrabold leading-tight">
-                {me.tg.first_name} {me.tg.last_name ?? ''}
-              </h1>
+              <>
+                <h1 className="text-2xl font-extrabold leading-tight">
+                  {me.tg.first_name} {me.tg.last_name ?? ''}
+                </h1>
+                {me.tg.username && (
+                  <p className="text-sm text-white/70 mt-1">@{me.tg.username}</p>
+                )}
+                <div className="mt-3">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] bg-white/15 backdrop-blur-sm rounded-full px-2.5 py-1 border border-white/20 font-semibold">
+                    {me.is_paid && <Crown className="w-3 h-3" />}
+                    {PLAN_LABELS[me.plan] ?? me.plan}
+                  </span>
+                </div>
+              </>
             ) : (
-              <h1 className="text-2xl font-extrabold leading-tight">Профиль</h1>
-            )}
-            {me?.tg.username && (
-              <p className="text-sm text-white/70 mt-1">@{me.tg.username}</p>
-            )}
-            {me && (
-              <div className="mt-3">
-                <span className="inline-flex items-center gap-1.5 text-[11px] bg-white/15 backdrop-blur-sm rounded-full px-2.5 py-1 border border-white/20 font-semibold">
-                  {me.is_paid && <Crown className="w-3 h-3" />}
-                  {PLAN_LABELS[me.plan] ?? me.plan}
-                </span>
+              <div className="animate-pulse">
+                <div className="h-7 w-44 rounded bg-white/15 mb-2" />
+                <div className="h-3 w-24 rounded bg-white/15" />
               </div>
             )}
           </div>
@@ -96,12 +89,12 @@ export function ProfilePage() {
           </Card>
         )}
 
-        {me && (
-          <>
-            <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold px-1 mb-1">
-              Остаток лимитов
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
+        <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold px-1 mb-1">
+          Остаток лимитов
+        </h3>
+        <div className="grid grid-cols-2 gap-3">
+          {me ? (
+            <>
               <QuotaCard
                 label="Проверок"
                 remaining={me.remaining.review}
@@ -114,7 +107,17 @@ export function ProfilePage() {
                 limit={me.limits.generate}
                 tone="accent"
               />
-            </div>
+            </>
+          ) : (
+            <>
+              <QuotaSkeleton />
+              <QuotaSkeleton />
+            </>
+          )}
+        </div>
+
+        {me && (
+          <>
 
             {!me.is_paid && (
               <button
@@ -136,6 +139,25 @@ export function ProfilePage() {
                 </div>
               </button>
             )}
+
+            {/* Эталоны */}
+            <button
+              onClick={() => {
+                haptic('light')
+                navigate('/etalons')
+              }}
+              className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors active:scale-[0.99]"
+            >
+              <div className="w-10 h-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0">
+                <FileStack className="w-5 h-5" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold">Эталоны</p>
+                <p className="text-xs text-muted-foreground">
+                  {me.is_paid ? 'Ваши образцы для AI' : 'Доступно на Pro и выше'}
+                </p>
+              </div>
+            </button>
 
             {/* Перепосмотреть онбординг */}
             <button
@@ -207,6 +229,17 @@ function QuotaCard({
       <p className="text-[11px] text-muted-foreground">
         Потрачено {used} из {limit}
       </p>
+    </Card>
+  )
+}
+
+function QuotaSkeleton() {
+  return (
+    <Card className="p-4 animate-pulse">
+      <div className="h-3 w-12 bg-muted rounded mb-3" />
+      <div className="h-8 w-20 bg-muted rounded mb-3" />
+      <div className="h-2 bg-muted rounded-full mb-2" />
+      <div className="h-3 w-24 bg-muted rounded" />
     </Card>
   )
 }

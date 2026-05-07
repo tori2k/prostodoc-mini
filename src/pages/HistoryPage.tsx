@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Loader2, FileSearch, FilePen, BookOpen, Sparkles,
+  FileSearch, FilePen, BookOpen, Sparkles,
 } from 'lucide-react'
 
 import { api, type HistoryItem } from '@/lib/api'
@@ -55,8 +55,11 @@ export function HistoryPage() {
 
       <div className="px-5 -mt-6 relative z-10">
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A]" />
+          <div className="space-y-2">
+            <RowSkeleton />
+            <RowSkeleton />
+            <RowSkeleton />
+            <RowSkeleton />
           </div>
         ) : !items || items.length === 0 ? (
           <EmptyState onStart={() => {
@@ -111,6 +114,19 @@ function HistoryRow({ item }: { item: HistoryItem }) {
             {item.summary}
           </p>
         )}
+      </div>
+    </div>
+  )
+}
+
+function RowSkeleton() {
+  return (
+    <div className="rounded-2xl bg-card border border-border p-4 flex items-start gap-3 animate-pulse">
+      <div className="w-10 h-10 rounded-xl bg-muted flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="h-3 w-20 bg-muted rounded mb-2" />
+        <div className="h-4 w-full max-w-[14rem] bg-muted rounded mb-2" />
+        <div className="h-3 w-32 bg-muted rounded" />
       </div>
     </div>
   )

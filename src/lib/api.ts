@@ -65,6 +65,12 @@ export interface HistoryResponse {
   items: HistoryItem[]
 }
 
+export interface Etalon {
+  idx: number
+  name: string
+  length: number
+}
+
 export interface TemplateField {
   key: string
   label: string
@@ -127,6 +133,22 @@ export const api = {
     }
     return res.blob()
   },
+
+  /** Эталоны (Pro / Lawyer). */
+  etalonsList: () => request<{ items: Etalon[]; max: number }>('/api/etalons'),
+  etalonsAdd: (file: File, name?: string) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    if (name) fd.append('name', name)
+    return request<{ ok: true; message: string; items: Etalon[] }>('/api/etalons', {
+      method: 'POST',
+      body: fd,
+    })
+  },
+  etalonsRemove: (idx: number) =>
+    request<{ ok: true; items: Etalon[] }>(`/api/etalons/${idx}`, {
+      method: 'DELETE',
+    }),
 
   /** Создать invoice link для оплаты тарифа звёздами. */
   subscribeInvoice: (plan: 'basic' | 'pro' | 'lawyer') =>
