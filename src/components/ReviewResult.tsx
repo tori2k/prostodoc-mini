@@ -282,14 +282,14 @@ function RiskCard({ risk }: { risk: { level: RiskLevel; title: string; body: str
             <div className={`text-[10px] uppercase tracking-wider font-bold ${meta.text} mb-1`}>
               {meta.label}
             </div>
-            <p className="text-sm font-semibold leading-snug">{risk.title}</p>
+            <p className="text-sm font-semibold leading-snug text-slate-900">{risk.title}</p>
           </div>
           {hasBody && (
             <ChevronDown className={`w-4 h-4 text-muted-foreground flex-shrink-0 mt-1 transition-transform ${expanded ? 'rotate-180' : ''}`} />
           )}
         </div>
         {expanded && hasBody && (
-          <p className="text-sm text-foreground/80 leading-relaxed mt-3 pt-3 border-t border-border/50">
+          <p className="text-sm text-slate-700 leading-relaxed mt-3 pt-3 border-t border-slate-200">
             {risk.body}
           </p>
         )}
